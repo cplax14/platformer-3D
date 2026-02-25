@@ -1,0 +1,28 @@
+[gd_scene load_steps=4 format=3 uid="uid://bouncy_platform_scene"]
+
+[ext_resource type="Script" path="res://src/objects/platforms/bouncy_platform.gd" id="1_bouncy"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_1"]
+size = Vector3(3, 0.5, 3)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_detect"]
+size = Vector3(2.8, 0.8, 2.8)
+
+[node name="BouncyPlatform" type="StaticBody3D"]
+collision_layer = 2
+collision_mask = 0
+script = ExtResource("1_bouncy")
+
+[node name="CSGBox3D" type="CSGBox3D" parent="."]
+size = Vector3(3, 0.5, 3)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+shape = SubResource("BoxShape3D_1")
+
+[node name="DetectionArea" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+collision_layer = 0
+collision_mask = 1
+
+[node name="DetectionCollision" type="CollisionShape3D" parent="DetectionArea"]
+shape = SubResource("BoxShape3D_detect")

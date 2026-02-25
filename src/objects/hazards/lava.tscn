@@ -1,0 +1,20 @@
+[gd_scene load_steps=3 format=3 uid="uid://lava_scene"]
+
+[ext_resource type="Script" path="res://src/objects/hazards/damage_zone.gd" id="1_damage"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_1"]
+size = Vector3(4, 0.5, 4)
+
+[node name="Lava" type="Node3D"]
+
+[node name="DamageZone" type="Area3D" parent="."]
+collision_layer = 8
+collision_mask = 1
+script = ExtResource("1_damage")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="DamageZone"]
+shape = SubResource("BoxShape3D_1")
+
+[node name="LavaMesh" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.15, 0)
+size = Vector3(4, 0.2, 4)

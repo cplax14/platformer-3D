@@ -1,0 +1,26 @@
+[gd_scene load_steps=4 format=3 uid="uid://level_end_scene"]
+
+[ext_resource type="Script" path="res://src/objects/collectibles/level_end.gd" id="1_end"]
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_1"]
+top_radius = 0.3
+bottom_radius = 0.5
+height = 3.0
+radial_segments = 8
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_1"]
+radius = 1.0
+height = 3.0
+
+[node name="LevelEnd" type="Area3D"]
+collision_layer = 0
+collision_mask = 1
+script = ExtResource("1_end")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)
+mesh = SubResource("CylinderMesh_1")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)
+shape = SubResource("CylinderShape3D_1")

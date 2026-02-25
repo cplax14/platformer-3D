@@ -1,0 +1,131 @@
+[gd_scene load_steps=2 format=3 uid="uid://hud_scene"]
+
+[ext_resource type="Script" path="res://src/ui/hud.gd" id="1_hud"]
+
+[node name="HUD" type="CanvasLayer"]
+layer = 10
+script = ExtResource("1_hud")
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = 15.0
+offset_right = -20.0
+offset_bottom = -15.0
+
+[node name="TopBar" type="HBoxContainer" parent="MarginContainer"]
+layout_mode = 2
+size_flags_vertical = 0
+alignment = 0
+
+[node name="Hearts" type="HBoxContainer" parent="MarginContainer/TopBar"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Heart1" type="Label" parent="MarginContainer/TopBar/Hearts"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "❤"
+modulate = Color(1.0, 0.2, 0.2, 1.0)
+
+[node name="Heart2" type="Label" parent="MarginContainer/TopBar/Hearts"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "❤"
+modulate = Color(1.0, 0.2, 0.2, 1.0)
+
+[node name="Heart3" type="Label" parent="MarginContainer/TopBar/Hearts"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "❤"
+modulate = Color(1.0, 0.2, 0.2, 1.0)
+
+[node name="Heart4" type="Label" parent="MarginContainer/TopBar/Hearts"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "❤"
+modulate = Color(1.0, 0.2, 0.2, 1.0)
+
+[node name="Heart5" type="Label" parent="MarginContainer/TopBar/Hearts"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "❤"
+modulate = Color(1.0, 0.2, 0.2, 1.0)
+
+[node name="Spacer1" type="Control" parent="MarginContainer/TopBar"]
+layout_mode = 2
+custom_minimum_size = Vector2(30, 0)
+
+[node name="CoinDisplay" type="HBoxContainer" parent="MarginContainer/TopBar"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="CoinIcon" type="Label" parent="MarginContainer/TopBar/CoinDisplay"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+theme_override_colors/font_color = Color(1.0, 0.85, 0.0, 1.0)
+text = "●"
+
+[node name="CoinCount" type="Label" parent="MarginContainer/TopBar/CoinDisplay"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+theme_override_colors/font_color = Color(1.0, 1.0, 1.0, 1.0)
+text = "0"
+
+[node name="Spacer2" type="Control" parent="MarginContainer/TopBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Stars" type="HBoxContainer" parent="MarginContainer/TopBar"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Star1" type="TextureRect" parent="MarginContainer/TopBar/Stars"]
+layout_mode = 2
+custom_minimum_size = Vector2(32, 32)
+modulate = Color(0.4, 0.4, 0.4, 0.5)
+
+[node name="Star1Label" type="Label" parent="MarginContainer/TopBar/Stars/Star1"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_font_sizes/font_size = 24
+theme_override_colors/font_color = Color(1.0, 0.85, 0.0, 1.0)
+text = "★"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Star2" type="TextureRect" parent="MarginContainer/TopBar/Stars"]
+layout_mode = 2
+custom_minimum_size = Vector2(32, 32)
+modulate = Color(0.4, 0.4, 0.4, 0.5)
+
+[node name="Star2Label" type="Label" parent="MarginContainer/TopBar/Stars/Star2"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_font_sizes/font_size = 24
+theme_override_colors/font_color = Color(1.0, 0.85, 0.0, 1.0)
+text = "★"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Star3" type="TextureRect" parent="MarginContainer/TopBar/Stars"]
+layout_mode = 2
+custom_minimum_size = Vector2(32, 32)
+modulate = Color(0.4, 0.4, 0.4, 0.5)
+
+[node name="Star3Label" type="Label" parent="MarginContainer/TopBar/Stars/Star3"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_font_sizes/font_size = 24
+theme_override_colors/font_color = Color(1.0, 0.85, 0.0, 1.0)
+text = "★"
+horizontal_alignment = 1
+vertical_alignment = 1
