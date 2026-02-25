@@ -1,0 +1,78 @@
+extends CanvasLayer
+
+## Level complete screen — shows stars earned, coins collected.
+## Buttons: Next Level, Replay, Level Select.
+
+@onready var title_label: Label = $CenterContainer/PanelContainer/VBoxContainer/TitleLabel
+@onready var stars_label: Label = $CenterContainer/PanelContainer/VBoxContainer/StarsLabel
+@onready var coins_label: Label = $CenterContainer/PanelContainer/VBoxContainer/CoinsLabel
+@onready var next_button: Button = $CenterContainer/PanelContainer/VBoxContainer/ButtonRow/NextButton
+@onready var replay_button: Button = $CenterContainer/PanelContainer/VBoxContainer/ButtonRow/ReplayButton
+@onready var select_button: Button = $CenterContainer/PanelContainer/VBoxContainer/ButtonRow/SelectButton
+
+var _next_world: int = 1
+var _next_level: int = 2
+
+
+func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	layer = 90
+	next_button.pressed.connect(_on_next_pressed)
+	replay_button.pressed.connect(_on_replay_pressed)
+	select_button.pressed.connect(_on_select_pressed)
+
+
+func show_results(world: int, level: int, next_w: int, next_l: int) -> void:
+	_next_world = next_w
+	_next_level = next_l
+
+	get_tree().paused = true
+	visible = true
+
+	# Title
+	if level == 4:
+		title_label.text = "Boss Defeated!"
+	else:
+		title_label.text = "Level %d-%d Complete!" % [world, level]
+
+	# Stars
+	var level_id := "%d_%d" % [world, level]
+	var star_count := GameManager.get_star_count(level_id)
+	var star_text := ""
+	for i in range(3):
+		star_text += " ★ " if i < star_count else " ☆ "
+	stars_label.text = star_text
+
+	# Coins
+	coins_label.text = "Coins: %d" % GameManager.coins
+
+	# Save progress
+	SaveManager.save_game()
+
+	# Animate stars appearing
+	_animate_stars()
+
+
+func _animate_stars() -> void:
+	stars_label.scale = Vector2.ZERO
+	var tween := create_tween()
+	tween.tween_interval(0.3)
+	tween.tween_property(stars_label, "scale", Vector2.ONE, 0.4).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_ELASTIC)
+
+
+func _on_next_pressed() -> void:
+	get_tree().paused = false
+	visible = false
+	GameManager.change_level(_next_world, _next_level)
+
+
+func _on_replay_pressed() -> void:
+	get_tree().paused = false
+	visible = false
+	GameManager.change_level(GameManager.current_world, GameManager.current_level)
+
+
+func _on_select_pressed() -> void:
+	get_tree().paused = false
+	visible = false
+	get_tree().change_scene_to_file("res://src/ui/level_select.tscn")

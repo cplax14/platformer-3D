@@ -1,0 +1,49 @@
+[gd_scene load_steps=6 format=3 uid="uid://player_scene"]
+
+[ext_resource type="Script" path="res://src/characters/player/player.gd" id="1_player"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_1"]
+radius = 0.4
+height = 1.2
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_1"]
+radius = 0.4
+height = 1.2
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_spin"]
+radius = 2.0
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_pound"]
+radius = 1.5
+
+[node name="Player" type="CharacterBody3D"]
+collision_layer = 1
+collision_mask = 2
+script = ExtResource("1_player")
+
+[node name="CollisionShape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
+shape = SubResource("CapsuleShape3D_1")
+
+[node name="Mesh" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
+mesh = SubResource("CapsuleMesh_1")
+
+[node name="SpinAttackArea" type="Area3D" parent="."]
+collision_layer = 0
+collision_mask = 4
+monitoring = false
+
+[node name="SpinCollision" type="CollisionShape3D" parent="SpinAttackArea"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
+shape = SubResource("SphereShape3D_spin")
+
+[node name="GroundPoundArea" type="Area3D" parent="."]
+collision_layer = 0
+collision_mask = 4
+monitoring = false
+
+[node name="PoundCollision" type="CollisionShape3D" parent="GroundPoundArea"]
+shape = SubResource("SphereShape3D_pound")
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
