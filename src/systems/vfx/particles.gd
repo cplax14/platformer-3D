@@ -168,6 +168,130 @@ func spawn_spin_attack(pos: Vector3) -> void:
 	})
 
 
+func spawn_wall_run_dust(pos: Vector3, wall_normal: Vector3) -> void:
+	spawn_at(pos, {
+		"amount": 6,
+		"lifetime": 0.3,
+		"direction": wall_normal,
+		"spread": 40.0,
+		"vel_min": 1.0,
+		"vel_max": 2.5,
+		"gravity": Vector3(0, -4, 0),
+		"scale_min": 0.04,
+		"scale_max": 0.12,
+		"color": Color(0.85, 0.8, 0.7, 0.7),
+	})
+
+
+func spawn_dash_trail(pos: Vector3, direction: Vector3) -> void:
+	spawn_at(pos, {
+		"amount": 8,
+		"lifetime": 0.25,
+		"direction": -direction,
+		"spread": 20.0,
+		"vel_min": 2.0,
+		"vel_max": 4.0,
+		"gravity": Vector3(0, 0, 0),
+		"scale_min": 0.03,
+		"scale_max": 0.08,
+		"color": Color(0.6, 0.85, 1.0, 0.7),
+	})
+
+
+func spawn_slide_dust(pos: Vector3, direction: Vector3) -> void:
+	spawn_at(pos, {
+		"amount": 6,
+		"lifetime": 0.3,
+		"direction": -direction + Vector3(0, 0.3, 0),
+		"spread": 30.0,
+		"vel_min": 1.5,
+		"vel_max": 3.0,
+		"gravity": Vector3(0, -3, 0),
+		"scale_min": 0.04,
+		"scale_max": 0.12,
+		"color": Color(0.8, 0.75, 0.6, 0.7),
+	})
+
+
+func spawn_bat_death(pos: Vector3) -> void:
+	spawn_at(pos, {
+		"amount": 16,
+		"lifetime": 0.5,
+		"explosiveness": 1.0,
+		"direction": Vector3(0, 1, 0),
+		"spread": 90.0,
+		"vel_min": 3.0,
+		"vel_max": 7.0,
+		"gravity": Vector3(0, -10, 0),
+		"scale_min": 0.1,
+		"scale_max": 0.25,
+		"color": Color(0.5, 0.2, 0.7, 1.0),
+	})
+
+
+func spawn_crystal_sparkle(pos: Vector3) -> void:
+	spawn_at(pos, {
+		"amount": 10,
+		"lifetime": 0.6,
+		"explosiveness": 0.8,
+		"direction": Vector3(0, 1, 0),
+		"spread": 60.0,
+		"vel_min": 1.0,
+		"vel_max": 3.0,
+		"gravity": Vector3(0, -2, 0),
+		"scale_min": 0.03,
+		"scale_max": 0.08,
+		"color": Color(0.8, 0.6, 1.0, 0.9),
+	})
+
+
+func spawn_dash_speed_lines(pos: Vector3, direction: Vector3) -> void:
+	spawn_at(pos, {
+		"amount": 14,
+		"lifetime": 0.4,
+		"direction": -direction,
+		"spread": 10.0,
+		"vel_min": 5.0,
+		"vel_max": 10.0,
+		"gravity": Vector3(0, 0, 0),
+		"scale_min": 0.02,
+		"scale_max": 0.06,
+		"color": Color(0.5, 0.85, 1.0, 0.9),
+	})
+
+
+func spawn_wall_run_sparkle(pos: Vector3, wall_normal: Vector3) -> void:
+	spawn_at(pos, {
+		"amount": 8,
+		"lifetime": 0.5,
+		"explosiveness": 0.7,
+		"direction": wall_normal + Vector3(0, 0.5, 0),
+		"spread": 35.0,
+		"vel_min": 1.5,
+		"vel_max": 3.5,
+		"gravity": Vector3(0, -2, 0),
+		"scale_min": 0.02,
+		"scale_max": 0.06,
+		"color": Color(0.7, 0.85, 1.0, 0.95),
+	})
+
+
+func spawn_spin_ring(pos: Vector3) -> void:
+	spawn_at(pos, {
+		"amount": 20,
+		"lifetime": 0.35,
+		"explosiveness": 1.0,
+		"direction": Vector3(0, 0, 0),
+		"spread": 180.0,
+		"vel_min": 4.0,
+		"vel_max": 7.0,
+		"gravity": Vector3(0, 0, 0),
+		"scale_min": 0.03,
+		"scale_max": 0.08,
+		"color": Color(0.4, 0.7, 1.0, 0.85),
+	})
+
+
 func spawn_crate_break(pos: Vector3) -> void:
 	spawn_at(pos, {
 		"amount": 14,

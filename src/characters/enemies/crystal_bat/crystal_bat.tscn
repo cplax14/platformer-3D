@@ -1,0 +1,45 @@
+[gd_scene load_steps=6 format=3 uid="uid://crystal_bat_scene"]
+
+[ext_resource type="Script" path="res://src/characters/enemies/crystal_bat/crystal_bat.gd" id="1_bat"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_1"]
+size = Vector3(0.6, 0.2, 0.8)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_body"]
+size = Vector3(0.6, 0.3, 0.8)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_hurt"]
+size = Vector3(0.8, 0.4, 1.0)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_damage"]
+size = Vector3(0.5, 0.3, 0.7)
+
+[node name="CrystalBat" type="CharacterBody3D"]
+collision_layer = 4
+collision_mask = 2
+script = ExtResource("1_bat")
+max_hp = 1
+
+[node name="Mesh" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+mesh = SubResource("BoxMesh_1")
+
+[node name="CollisionShape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+shape = SubResource("BoxShape3D_body")
+
+[node name="Hurtbox" type="Area3D" parent="."]
+collision_layer = 4
+collision_mask = 1
+
+[node name="HurtboxShape" type="CollisionShape3D" parent="Hurtbox"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+shape = SubResource("BoxShape3D_hurt")
+
+[node name="PlayerDamageArea" type="Area3D" parent="."]
+collision_layer = 4
+collision_mask = 1
+
+[node name="DamageShape" type="CollisionShape3D" parent="PlayerDamageArea"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+shape = SubResource("BoxShape3D_damage")

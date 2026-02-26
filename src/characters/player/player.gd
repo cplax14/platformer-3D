@@ -2,7 +2,7 @@ extends CharacterBody3D
 
 ## Player controller for a kid-friendly 3D platformer.
 ## Handles movement, jumping (variable height, double jump, coyote time,
-## jump buffering), ground pound, and spin attack.
+## jump buffering), ground pound, spin attack, wall run, and air dash.
 
 # Movement
 @export var move_speed: float = 8.0
@@ -21,10 +21,32 @@ extends CharacterBody3D
 @export var ground_pound_speed: float = 25.0
 @export var ground_pound_jump_boost: float = 14.0
 
+# Wall run
+@export var wall_run_speed: float = 8.0
+@export var wall_run_duration: float = 0.6
+@export var wall_jump_force: float = 10.0
+@export var wall_jump_horizontal: float = 7.0
+
 # Spin attack
 @export var spin_attack_duration: float = 0.4
 @export var spin_attack_cooldown: float = 0.6
 @export var spin_attack_radius: float = 2.0
+
+# Air dash
+@export var dash_speed: float = 20.0
+@export var dash_duration: float = 0.15
+@export var dash_cooldown: float = 0.4
+
+# Wall slide
+@export var wall_slide_speed: float = 3.0
+@export var wall_slide_jump_force: float = 9.0
+@export var wall_slide_jump_horizontal: float = 6.0
+
+# Ground slide
+@export var slide_speed: float = 12.0
+@export var slide_duration: float = 0.5
+@export var slide_deceleration: float = 20.0
+@export var slide_jump_boost: float = 2.0
 
 # Gravity
 @export var gravity: float = 30.0
@@ -38,7 +60,7 @@ extends CharacterBody3D
 @onready var animation_player: AnimationPlayer = $AnimationPlayer
 
 # State
-enum State { IDLE, RUNNING, JUMPING, FALLING, DOUBLE_JUMPING, GROUND_POUND, SPIN_ATTACK }
+enum State { IDLE, RUNNING, JUMPING, FALLING, DOUBLE_JUMPING, GROUND_POUND, SPIN_ATTACK, WALL_RUNNING, DASHING, WALL_SLIDING, SLIDING }
 var current_state: State = State.IDLE
 
 var _coyote_timer: float = 0.0
@@ -50,6 +72,41 @@ var _spin_attack_cooldown_timer: float = 0.0
 var _was_on_floor: bool = false
 var _input_direction: Vector3 = Vector3.ZERO
 var _last_movement_direction: Vector3 = Vector3.FORWARD
+var _is_wall_running: bool = false
+var _wall_run_timer: float = 0.0
+var _wall_normal: Vector3 = Vector3.ZERO
+var _wall_run_used: bool = false
+
+# Dash state
+var _is_dashing: bool = false
+var _dash_timer: float = 0.0
+var _dash_cooldown_timer: float = 0.0
+var _dash_direction: Vector3 = Vector3.ZERO
+var _has_air_dash: bool = true
+
+# Wall slide state
+var _is_wall_sliding: bool = false
+var _wall_slide_normal: Vector3 = Vector3.ZERO
+
+# Ground slide state
+var _is_sliding: bool = false
+var _slide_timer: float = 0.0
+var _slide_direction: Vector3 = Vector3.ZERO
+
+# Animation time accumulator
+var _anim_time: float = 0.0
+
+# Robot parts for procedural animation
+var _robot_head: MeshInstance3D
+var _robot_body: MeshInstance3D
+var _robot_eye_l: MeshInstance3D
+var _robot_eye_r: MeshInstance3D
+var _robot_arm_l: MeshInstance3D
+var _robot_arm_r: MeshInstance3D
+var _robot_leg_l: MeshInstance3D
+var _robot_leg_r: MeshInstance3D
+var _robot_antenna_pole: MeshInstance3D
+var _robot_antenna_tip: MeshInstance3D
 
 
 func _ready() -> void:
@@ -57,9 +114,7 @@ func _ready() -> void:
 	spin_attack_area.monitoring = false
 	ground_pound_area.monitoring = false
 
-	# Apply toon material
-	if mesh and MaterialLibrary:
-		mesh.material_override = MaterialLibrary.get_material("player")
+	_build_robot_mesh()
 
 
 func _physics_process(delta: float) -> void:
@@ -67,10 +122,15 @@ func _physics_process(delta: float) -> void:
 	_handle_input()
 	_apply_gravity(delta)
 	_handle_jump()
+	_handle_wall_run(delta)
+	_handle_wall_slide(delta)
+	_handle_dash(delta)
 	_handle_ground_pound()
 	_handle_spin_attack(delta)
+	_handle_ground_slide(delta)
 	_apply_movement(delta)
 	_update_state()
+	_animate_robot(delta)
 
 	_was_on_floor = is_on_floor()
 	move_and_slide()
@@ -90,6 +150,10 @@ func _update_timers(delta: float) -> void:
 	# Spin attack cooldown
 	if _spin_attack_cooldown_timer > 0.0:
 		_spin_attack_cooldown_timer = maxf(_spin_attack_cooldown_timer - delta, 0.0)
+
+	# Dash cooldown
+	if _dash_cooldown_timer > 0.0:
+		_dash_cooldown_timer = maxf(_dash_cooldown_timer - delta, 0.0)
 
 
 func _handle_input() -> void:
@@ -126,6 +190,9 @@ func _apply_gravity(delta: float) -> void:
 		velocity.y = -ground_pound_speed
 		return
 
+	if _is_wall_running or _is_dashing:
+		return
+
 	if not is_on_floor():
 		velocity.y -= gravity * delta
 		velocity.y = maxf(velocity.y, -max_fall_speed)
@@ -136,7 +203,7 @@ func _apply_gravity(delta: float) -> void:
 
 
 func _handle_jump() -> void:
-	if _is_ground_pounding or current_state == State.SPIN_ATTACK:
+	if _is_ground_pounding or current_state == State.SPIN_ATTACK or _is_wall_running or _is_dashing or _is_wall_sliding:
 		return
 
 	var can_coyote_jump := _coyote_timer > 0.0
@@ -148,6 +215,7 @@ func _handle_jump() -> void:
 		_coyote_timer = 0.0
 		_jump_buffer_timer = 0.0
 		_has_double_jump = true
+		AudioManager.play_sfx(SoundLibrary.jump)
 		return
 
 	# Double jump
@@ -155,12 +223,16 @@ func _handle_jump() -> void:
 		_perform_jump(double_jump_force)
 		_has_double_jump = false
 		_jump_buffer_timer = 0.0
+		AudioManager.play_sfx(SoundLibrary.double_jump)
 
-	# Reset double jump on landing
+	# Reset double jump, wall run, and air dash on landing
 	if is_on_floor() and not _was_on_floor:
 		_has_double_jump = true
+		_wall_run_used = false
+		_has_air_dash = true
 		Juice.squash(mesh)
 		Particles.spawn_land_impact(global_position)
+		AudioManager.play_sfx(SoundLibrary.land)
 
 
 func _perform_jump(force: float) -> void:
@@ -169,7 +241,198 @@ func _perform_jump(force: float) -> void:
 	Particles.spawn_jump_dust(global_position)
 
 
+func _handle_wall_run(delta: float) -> void:
+	# While wall running
+	if _is_wall_running:
+		_wall_run_timer -= delta
+
+		# Wall jump: press jump during wall run
+		if Input.is_action_just_pressed("jump"):
+			_end_wall_run()
+			velocity = _wall_normal * wall_jump_horizontal + Vector3.UP * wall_jump_force
+			_has_double_jump = true
+			_has_air_dash = true  # Reset air dash on wall jump
+			_wall_run_used = true
+			_jump_buffer_timer = 0.0
+			Juice.stretch(mesh)
+			Particles.spawn_jump_dust(global_position)
+			AudioManager.play_sfx(SoundLibrary.wall_jump)
+			return
+
+		# Timeout: wall run expired
+		if _wall_run_timer <= 0.0:
+			_end_wall_run()
+			return
+
+		# Move upward along wall
+		velocity.y = wall_run_speed
+		# Slight forward movement along the wall surface
+		var wall_tangent := Vector3.UP.cross(_wall_normal).normalized()
+		if _input_direction.dot(wall_tangent) < 0.0:
+			wall_tangent = -wall_tangent
+		velocity.x = wall_tangent.x * move_speed * 0.3
+		velocity.z = wall_tangent.z * move_speed * 0.3
+
+		# Continuous dust particles
+		if Engine.get_physics_frames() % 4 == 0:
+			Particles.spawn_wall_run_dust(global_position, _wall_normal)
+		# Bright sparkle trail alongside dust
+		if Engine.get_physics_frames() % 3 == 0:
+			Particles.spawn_wall_run_sparkle(global_position, _wall_normal)
+		return
+
+	# Entry: airborne, on wall, pressing toward wall, jump pressed, not used yet
+	if is_on_floor() or _is_ground_pounding or _wall_run_used or _is_dashing or _is_wall_sliding:
+		return
+	if current_state == State.SPIN_ATTACK:
+		return
+	if not is_on_wall():
+		return
+
+	_wall_normal = get_wall_normal()
+	# Check player is pressing toward the wall (generous angle for kids)
+	var pressing_toward_wall := _input_direction.dot(-_wall_normal) > 0.3
+	if not pressing_toward_wall:
+		return
+
+	if Input.is_action_just_pressed("jump") or _jump_buffer_timer > 0.0:
+		_start_wall_run()
+
+
+func _start_wall_run() -> void:
+	_is_wall_running = true
+	_wall_run_timer = wall_run_duration
+	_jump_buffer_timer = 0.0
+	current_state = State.WALL_RUNNING
+	# Tilt mesh toward wall
+	Juice.wall_tilt(mesh, -_wall_normal)
+	Juice.squash(mesh, 0.2)
+	ScreenShake.shake_light()
+	Particles.spawn_wall_run_dust(global_position, _wall_normal)
+	Particles.spawn_wall_run_sparkle(global_position, _wall_normal)
+	AudioManager.play_sfx(SoundLibrary.wall_run_start)
+
+
+func _end_wall_run() -> void:
+	_is_wall_running = false
+	_wall_run_timer = 0.0
+	# Reset mesh tilt
+	Juice.wall_tilt_reset(mesh)
+
+
+func _handle_wall_slide(delta: float) -> void:
+	# While wall sliding
+	if _is_wall_sliding:
+		# Wall jump from slide
+		if Input.is_action_just_pressed("jump"):
+			_end_wall_slide()
+			velocity = _wall_slide_normal * wall_slide_jump_horizontal + Vector3.UP * wall_slide_jump_force
+			_has_double_jump = true
+			_has_air_dash = true
+			_jump_buffer_timer = 0.0
+			Juice.stretch(mesh)
+			Particles.spawn_jump_dust(global_position)
+			AudioManager.play_sfx(SoundLibrary.wall_jump)
+			return
+
+		# Exit: left wall, landed, or started wall run
+		if is_on_floor() or not is_on_wall() or _is_wall_running:
+			_end_wall_slide()
+			return
+
+		# Cap descent speed
+		velocity.y = maxf(velocity.y, -wall_slide_speed)
+
+		# Dust particles (every 6 frames)
+		if Engine.get_physics_frames() % 6 == 0:
+			Particles.spawn_wall_run_dust(global_position, _wall_slide_normal)
+		# Sparkle particles during wall slide
+		if Engine.get_physics_frames() % 4 == 0:
+			Particles.spawn_wall_run_sparkle(global_position, _wall_slide_normal)
+		return
+
+	# Entry: airborne, falling, on wall, not in other states
+	if is_on_floor() or _is_ground_pounding or _is_dashing or _is_wall_running:
+		return
+	if current_state == State.SPIN_ATTACK:
+		return
+	if not is_on_wall() or velocity.y >= 0.0:
+		return
+
+	_start_wall_slide()
+
+
+func _start_wall_slide() -> void:
+	_is_wall_sliding = true
+	_wall_slide_normal = get_wall_normal()
+	current_state = State.WALL_SLIDING
+	AudioManager.play_sfx(SoundLibrary.wall_slide)
+
+
+func _end_wall_slide() -> void:
+	_is_wall_sliding = false
+	_wall_slide_normal = Vector3.ZERO
+
+
+func _handle_dash(delta: float) -> void:
+	# During dash
+	if _is_dashing:
+		_dash_timer -= delta
+		velocity = _dash_direction * dash_speed
+		velocity.y = 0.0  # Keep horizontal
+
+		# Dash trail particles + speed lines
+		if Engine.get_physics_frames() % 2 == 0:
+			Particles.spawn_dash_trail(global_position, _dash_direction)
+			Particles.spawn_dash_speed_lines(global_position, _dash_direction)
+
+		if _dash_timer <= 0.0:
+			_end_dash()
+		return
+
+	# Entry: press dash while airborne, has air dash, cooldown ready
+	if not Input.is_action_just_pressed("dash"):
+		return
+	if is_on_floor() or not _has_air_dash or _dash_cooldown_timer > 0.0:
+		return
+	if _is_ground_pounding or _is_wall_running or current_state == State.SPIN_ATTACK:
+		return
+
+	_start_dash()
+
+
+func _start_dash() -> void:
+	if _is_wall_sliding:
+		_end_wall_slide()
+	_is_dashing = true
+	_has_air_dash = false
+	_dash_timer = dash_duration
+
+	# Dash in the direction the player is facing/moving
+	if _input_direction.length() > 0.1:
+		_dash_direction = _input_direction.normalized()
+	else:
+		_dash_direction = _last_movement_direction.normalized()
+
+	# VFX and SFX
+	Juice.stretch(mesh, 0.4)
+	AudioManager.play_sfx(SoundLibrary.dash)
+	Particles.spawn_dash_trail(global_position, _dash_direction)
+
+
+func _end_dash() -> void:
+	_is_dashing = false
+	_dash_timer = 0.0
+	_dash_cooldown_timer = dash_cooldown
+	# Preserve some forward momentum after dash
+	velocity = _dash_direction * move_speed * 0.6
+	velocity.y = 0.0
+
+
 func _handle_ground_pound() -> void:
+	if _is_dashing:
+		return
+
 	# Start ground pound: press attack while in air and not already pounding
 	if not is_on_floor() and not _is_ground_pounding and current_state != State.SPIN_ATTACK:
 		if Input.is_action_just_pressed("attack"):
@@ -199,11 +462,18 @@ func _end_ground_pound() -> void:
 	Particles.spawn_ground_pound_impact(global_position)
 	ScreenShake.shake_medium()
 	Juice.squash(mesh, 0.5)
+	AudioManager.play_sfx(SoundLibrary.ground_pound)
 
 
 func _handle_spin_attack(delta: float) -> void:
+	if _is_dashing:
+		return
+
 	if _spin_attack_timer > 0.0:
 		_spin_attack_timer -= delta
+		# Expanding ring particles during entire spin
+		if Engine.get_physics_frames() % 4 == 0:
+			Particles.spawn_spin_ring(global_position + Vector3(0, 0.5, 0))
 		if _spin_attack_timer <= 0.0:
 			_end_spin_attack()
 		return
@@ -220,6 +490,7 @@ func _start_spin_attack() -> void:
 	spin_attack_area.collision_layer = 1
 	current_state = State.SPIN_ATTACK
 	Particles.spawn_spin_attack(global_position + Vector3(0, 0.5, 0))
+	AudioManager.play_sfx(SoundLibrary.spin_attack)
 	_play_spin_animation()
 
 
@@ -240,9 +511,81 @@ func _end_spin_attack() -> void:
 	spin_attack_area.collision_layer = 0
 
 
+func _handle_ground_slide(delta: float) -> void:
+	# During slide
+	if _is_sliding:
+		_slide_timer -= delta
+
+		# Slide-jump: jump during slide for boosted horizontal momentum
+		if Input.is_action_just_pressed("jump"):
+			var slide_dir := _slide_direction.normalized()
+			_end_ground_slide()
+			_perform_jump(jump_force)
+			velocity.x += slide_dir.x * slide_jump_boost
+			velocity.z += slide_dir.z * slide_jump_boost
+			_coyote_timer = 0.0
+			_jump_buffer_timer = 0.0
+			_has_double_jump = true
+			AudioManager.play_sfx(SoundLibrary.jump)
+			return
+
+		# Exit: timer expired or left floor
+		if _slide_timer <= 0.0 or not is_on_floor():
+			_end_ground_slide()
+			return
+
+		# Decelerate slide
+		var speed := _slide_direction.length()
+		var new_speed := maxf(speed - slide_deceleration * delta, 0.0)
+		if new_speed > 0.0:
+			_slide_direction = _slide_direction.normalized() * new_speed
+		else:
+			_end_ground_slide()
+			return
+
+		velocity.x = _slide_direction.x
+		velocity.z = _slide_direction.z
+
+		# Dust trail
+		if Engine.get_physics_frames() % 3 == 0:
+			Particles.spawn_slide_dust(global_position, _slide_direction.normalized())
+		return
+
+	# Entry: crouch pressed, on floor, moving, not in other states
+	if not Input.is_action_just_pressed("crouch"):
+		return
+	if not is_on_floor() or _is_ground_pounding or _is_dashing:
+		return
+	if current_state == State.SPIN_ATTACK:
+		return
+	if _input_direction.length() <= 0.1:
+		return
+
+	_start_ground_slide()
+
+
+func _start_ground_slide() -> void:
+	_is_sliding = true
+	_slide_timer = slide_duration
+	_slide_direction = _input_direction.normalized() * slide_speed
+	current_state = State.SLIDING
+	Juice.squash(mesh, 0.4)
+	AudioManager.play_sfx(SoundLibrary.slide)
+	Particles.spawn_slide_dust(global_position, _input_direction.normalized())
+
+
+func _end_ground_slide() -> void:
+	_is_sliding = false
+	_slide_timer = 0.0
+	_slide_direction = Vector3.ZERO
+	# Restore mesh scale
+	var tween := mesh.create_tween()
+	tween.tween_property(mesh, "scale", Vector3.ONE, 0.1).set_ease(Tween.EASE_OUT)
+
+
 func _apply_movement(delta: float) -> void:
-	if _is_ground_pounding:
-		return  # No horizontal movement during ground pound
+	if _is_ground_pounding or _is_wall_running or _is_dashing or _is_sliding:
+		return  # No horizontal input during ground pound, wall run, dash, or slide
 
 	var target_velocity := Vector3.ZERO
 
@@ -262,6 +605,18 @@ func _apply_movement(delta: float) -> void:
 func _update_state() -> void:
 	if current_state == State.SPIN_ATTACK and _spin_attack_timer > 0.0:
 		return  # Don't interrupt spin attack
+	if _is_wall_running:
+		current_state = State.WALL_RUNNING
+		return
+	if _is_dashing:
+		current_state = State.DASHING
+		return
+	if _is_wall_sliding:
+		current_state = State.WALL_SLIDING
+		return
+	if _is_sliding:
+		current_state = State.SLIDING
+		return
 
 	if _is_ground_pounding:
 		current_state = State.GROUND_POUND
@@ -290,11 +645,224 @@ func take_damage(damage_position: Vector3) -> void:
 	# Cancel any active states
 	_is_ground_pounding = false
 	_spin_attack_timer = 0.0
+	if _is_wall_running:
+		_end_wall_run()
+	if _is_wall_sliding:
+		_end_wall_slide()
+	if _is_dashing:
+		_end_dash()
+	if _is_sliding:
+		_end_ground_slide()
 	spin_attack_area.monitoring = false
 	spin_attack_area.collision_layer = 0
 	ground_pound_area.monitoring = false
 	ground_pound_area.collision_layer = 0
 
-	# Juice
+	# Juice and SFX
 	ScreenShake.shake_light()
 	Juice.flash(mesh)
+	AudioManager.play_sfx(SoundLibrary.hurt)
+
+
+func _build_robot_mesh() -> void:
+	# Remove the default capsule mesh from $Mesh
+	if mesh.mesh:
+		mesh.mesh = null
+	mesh.material_override = null
+
+	var player_mat: ShaderMaterial = MaterialLibrary.get_material("player")
+	var white_mat := StandardMaterial3D.new()
+	white_mat.albedo_color = Color(0.95, 0.95, 1.0)
+	white_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+
+	# Body (torso)
+	_robot_body = MeshInstance3D.new()
+	var body_mesh := BoxMesh.new()
+	body_mesh.size = Vector3(0.5, 0.6, 0.4)
+	_robot_body.mesh = body_mesh
+	_robot_body.material_override = player_mat
+	_robot_body.position = Vector3(0, 0.55, 0)
+	mesh.add_child(_robot_body)
+
+	# Head
+	_robot_head = MeshInstance3D.new()
+	var head_mesh := SphereMesh.new()
+	head_mesh.radius = 0.2
+	head_mesh.height = 0.4
+	_robot_head.mesh = head_mesh
+	_robot_head.material_override = player_mat
+	_robot_head.position = Vector3(0, 1.05, 0)
+	mesh.add_child(_robot_head)
+
+	# Eyes
+	_robot_eye_l = MeshInstance3D.new()
+	var eye_mesh := SphereMesh.new()
+	eye_mesh.radius = 0.05
+	eye_mesh.height = 0.1
+	_robot_eye_l.mesh = eye_mesh
+	_robot_eye_l.material_override = white_mat
+	_robot_eye_l.position = Vector3(-0.08, 1.08, 0.16)
+	mesh.add_child(_robot_eye_l)
+
+	_robot_eye_r = MeshInstance3D.new()
+	_robot_eye_r.mesh = eye_mesh
+	_robot_eye_r.material_override = white_mat
+	_robot_eye_r.position = Vector3(0.08, 1.08, 0.16)
+	mesh.add_child(_robot_eye_r)
+
+	# Left arm
+	_robot_arm_l = MeshInstance3D.new()
+	var arm_mesh := BoxMesh.new()
+	arm_mesh.size = Vector3(0.15, 0.4, 0.15)
+	_robot_arm_l.mesh = arm_mesh
+	_robot_arm_l.material_override = player_mat
+	_robot_arm_l.position = Vector3(-0.35, 0.55, 0)
+	mesh.add_child(_robot_arm_l)
+
+	# Right arm
+	_robot_arm_r = MeshInstance3D.new()
+	_robot_arm_r.mesh = arm_mesh
+	_robot_arm_r.material_override = player_mat
+	_robot_arm_r.position = Vector3(0.35, 0.55, 0)
+	mesh.add_child(_robot_arm_r)
+
+	# Left leg
+	_robot_leg_l = MeshInstance3D.new()
+	var leg_mesh := BoxMesh.new()
+	leg_mesh.size = Vector3(0.15, 0.35, 0.15)
+	_robot_leg_l.mesh = leg_mesh
+	_robot_leg_l.material_override = player_mat
+	_robot_leg_l.position = Vector3(-0.12, 0.075, 0)
+	mesh.add_child(_robot_leg_l)
+
+	# Right leg
+	_robot_leg_r = MeshInstance3D.new()
+	_robot_leg_r.mesh = leg_mesh
+	_robot_leg_r.material_override = player_mat
+	_robot_leg_r.position = Vector3(0.12, 0.075, 0)
+	mesh.add_child(_robot_leg_r)
+
+	# Antenna pole
+	_robot_antenna_pole = MeshInstance3D.new()
+	var antenna_mesh := CylinderMesh.new()
+	antenna_mesh.top_radius = 0.015
+	antenna_mesh.bottom_radius = 0.015
+	antenna_mesh.height = 0.2
+	_robot_antenna_pole.mesh = antenna_mesh
+	_robot_antenna_pole.material_override = player_mat
+	_robot_antenna_pole.position = Vector3(0, 1.35, 0)
+	mesh.add_child(_robot_antenna_pole)
+
+	# Antenna tip (glowing ball)
+	_robot_antenna_tip = MeshInstance3D.new()
+	var tip_mesh := SphereMesh.new()
+	tip_mesh.radius = 0.04
+	tip_mesh.height = 0.08
+	_robot_antenna_tip.mesh = tip_mesh
+	var tip_mat := StandardMaterial3D.new()
+	tip_mat.albedo_color = Color(1.0, 0.9, 0.2)
+	tip_mat.emission_enabled = true
+	tip_mat.emission = Color(1.0, 0.9, 0.2)
+	tip_mat.emission_energy_multiplier = 2.0
+	_robot_antenna_tip.material_override = tip_mat
+	_robot_antenna_tip.position = Vector3(0, 1.46, 0)
+	mesh.add_child(_robot_antenna_tip)
+
+
+func _animate_robot(delta: float) -> void:
+	if not _robot_body:
+		return
+
+	_anim_time += delta
+	var t := _anim_time * 3.0
+
+	match current_state:
+		State.IDLE:
+			# Gentle bob
+			var bob := sin(t * 2.0) * 0.02
+			_robot_body.position.y = 0.55 + bob
+			_robot_head.position.y = 1.05 + bob
+			# Antenna sway
+			_robot_antenna_pole.rotation.z = sin(t * 1.5) * 0.15
+			_robot_antenna_tip.position.x = sin(t * 1.5) * 0.02
+			# Reset limbs
+			_robot_arm_l.rotation.x = 0.0
+			_robot_arm_r.rotation.x = 0.0
+			_robot_arm_l.rotation.z = 0.0
+			_robot_arm_r.rotation.z = 0.0
+			_robot_leg_l.rotation.x = 0.0
+			_robot_leg_r.rotation.x = 0.0
+
+		State.RUNNING:
+			# Walk cycle: sin-based arm/leg swing
+			var walk_speed := 12.0
+			var swing := sin(t * walk_speed)
+			_robot_arm_l.rotation.x = swing * 0.6
+			_robot_arm_r.rotation.x = -swing * 0.6
+			_robot_arm_l.rotation.z = 0.0
+			_robot_arm_r.rotation.z = 0.0
+			_robot_leg_l.rotation.x = -swing * 0.5
+			_robot_leg_r.rotation.x = swing * 0.5
+			# Slight body bob
+			_robot_body.position.y = 0.55 + absf(sin(t * walk_speed * 2.0)) * 0.03
+			_robot_head.position.y = 1.05 + absf(sin(t * walk_speed * 2.0)) * 0.03
+			_robot_antenna_pole.rotation.z = sin(t * walk_speed) * 0.1
+
+		State.JUMPING, State.DOUBLE_JUMPING:
+			# Arms up, legs tucked
+			_robot_arm_l.rotation.x = -0.8
+			_robot_arm_r.rotation.x = -0.8
+			_robot_leg_l.rotation.x = 0.3
+			_robot_leg_r.rotation.x = 0.3
+			_robot_antenna_pole.rotation.z = sin(t * 3.0) * 0.2
+
+		State.FALLING:
+			# Arms out, legs spread
+			_robot_arm_l.rotation.x = -0.4
+			_robot_arm_r.rotation.x = -0.4
+			_robot_arm_l.rotation.z = -0.5
+			_robot_arm_r.rotation.z = 0.5
+			_robot_leg_l.rotation.x = -0.2
+			_robot_leg_r.rotation.x = -0.2
+
+		State.WALL_RUNNING:
+			# Lean forward, fast leg cycle
+			var run_speed := 16.0
+			var run_swing := sin(t * run_speed)
+			_robot_arm_l.rotation.x = run_swing * 0.7
+			_robot_arm_r.rotation.x = -run_swing * 0.7
+			_robot_leg_l.rotation.x = -run_swing * 0.6
+			_robot_leg_r.rotation.x = run_swing * 0.6
+			_robot_body.position.y = 0.55
+
+		State.GROUND_POUND:
+			# Tucked ball
+			_robot_arm_l.rotation.x = 0.8
+			_robot_arm_r.rotation.x = 0.8
+			_robot_leg_l.rotation.x = 0.6
+			_robot_leg_r.rotation.x = 0.6
+
+		State.DASHING:
+			# Arms back, streamlined
+			_robot_arm_l.rotation.x = 1.0
+			_robot_arm_r.rotation.x = 1.0
+			_robot_leg_l.rotation.x = 0.2
+			_robot_leg_r.rotation.x = 0.2
+
+		State.WALL_SLIDING:
+			# One arm gripping wall
+			_robot_arm_l.rotation.x = -1.0
+			_robot_arm_r.rotation.x = 0.3
+			_robot_leg_l.rotation.x = 0.0
+			_robot_leg_r.rotation.x = 0.0
+
+		State.SLIDING:
+			# Low pose, arms back
+			_robot_arm_l.rotation.x = 0.8
+			_robot_arm_r.rotation.x = 0.8
+			_robot_leg_l.rotation.x = -0.5
+			_robot_leg_r.rotation.x = -0.5
+
+		State.SPIN_ATTACK:
+			# Handled by existing mesh rotation tween
+			pass

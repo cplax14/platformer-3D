@@ -21,6 +21,7 @@ func _on_body_entered(body: Node3D) -> void:
 		return
 
 	_activated = true
+	AudioManager.play_sfx(SoundLibrary.checkpoint)
 	# Visual feedback
 	var tween := create_tween()
 	tween.tween_property(mesh, "scale", Vector3(1.3, 1.5, 1.3), 0.2).set_ease(Tween.EASE_OUT)

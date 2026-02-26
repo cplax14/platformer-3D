@@ -47,6 +47,27 @@ func shake_node(node: Node3D, intensity: float = 0.1, duration: float = 0.3) -> 
 	tween.tween_property(node, "position", original_pos, step_duration)
 
 
+## Wall tilt: lean mesh toward wall during wall run.
+func wall_tilt(node: Node3D, toward_wall: Vector3, angle: float = 0.35) -> void:
+	var tilt_axis := Vector3.UP.cross(toward_wall).normalized()
+	if tilt_axis.length() < 0.01:
+		return
+	var target_rotation := node.rotation
+	target_rotation.x = tilt_axis.z * angle
+	target_rotation.z = -tilt_axis.x * angle
+	var tween := node.create_tween()
+	tween.tween_property(node, "rotation", target_rotation, 0.12).set_ease(Tween.EASE_OUT)
+
+
+## Wall tilt reset: return mesh to upright after wall run.
+func wall_tilt_reset(node: Node3D) -> void:
+	var target_rotation := node.rotation
+	target_rotation.x = 0.0
+	target_rotation.z = 0.0
+	var tween := node.create_tween()
+	tween.tween_property(node, "rotation", target_rotation, 0.15).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_ELASTIC)
+
+
 ## Flash: briefly change modulate and back (damage feedback).
 func flash(node: Node3D, color: Color = Color(1, 0.3, 0.3), duration: float = 0.15) -> void:
 	var original: Color = node.modulate if "modulate" in node else Color.WHITE

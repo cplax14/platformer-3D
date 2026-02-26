@@ -38,6 +38,7 @@ func _on_body_entered(body: Node3D) -> void:
 
 
 func _complete() -> void:
+	AudioManager.play_sfx(SoundLibrary.level_complete)
 	# Find level_base script on parent
 	var level := _find_level_root()
 	if level and level.has_method("complete_level"):

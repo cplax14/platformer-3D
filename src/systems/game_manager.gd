@@ -131,11 +131,11 @@ func _on_player_death() -> void:
 	lives_changed.emit(lives)
 	player_died.emit()
 
-	if lives >= 0:
+	if lives > 0:
 		# Respawn at checkpoint — reload current level
 		reset_level_state()
 		var level_path := _get_level_path(current_world, current_level)
-		get_tree().call_deferred("change_scene_to_file", level_path)
+		SceneTransition.transition_to_scene(level_path, SceneTransition.Type.FADE)
 	else:
 		# Game over — show game over screen
 		_show_game_over()
@@ -152,7 +152,7 @@ func change_level(world: int, level: int) -> void:
 	current_level = level
 	reset_level_state()
 	var level_path := _get_level_path(world, level)
-	get_tree().call_deferred("change_scene_to_file", level_path)
+	SceneTransition.transition_to_scene(level_path)
 
 
 func _get_level_path(world: int, level: int) -> String:

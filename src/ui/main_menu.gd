@@ -9,11 +9,12 @@ var _options_instance: Control = null
 
 func _ready() -> void:
 	get_tree().paused = false
+	AudioManager.play_music(MusicLibrary.menu)
 
 
 func _on_play_pressed() -> void:
 	SaveManager.load_game()
-	get_tree().change_scene_to_file("res://src/ui/level_select.tscn")
+	SceneTransition.transition_to_scene("res://src/ui/level_select.tscn")
 
 
 func _on_options_pressed() -> void:
