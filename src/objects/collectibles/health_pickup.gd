@@ -43,6 +43,7 @@ func _on_body_entered(body: Node3D) -> void:
 	_collected = true
 	GameManager.heal(heal_amount)
 	Particles.spawn_health_collect(global_position)
+	AudioManager.play_sfx(SoundLibrary.health_pickup)
 
 	var tween := create_tween()
 	tween.tween_property(self, "scale", Vector3.ZERO, 0.2).set_ease(Tween.EASE_IN)

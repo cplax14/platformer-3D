@@ -59,6 +59,14 @@ func _create_materials() -> void:
 	# Projectiles
 	_materials["projectile"] = _create_toon_mat(Color(1.0, 0.3, 0.1))    # Hot red
 
+	# World 2 — Crystal Caves
+	_materials["crystal"] = _create_toon_mat(Color(0.5, 0.3, 0.9), true)       # Crystal formations
+	_materials["crystal_glow"] = _create_toon_mat(Color(0.7, 0.5, 1.0))        # Glowing crystals
+	_materials["dark_stone"] = _create_toon_mat(Color(0.25, 0.2, 0.3))         # Cave floor/walls
+	_materials["cave_platform"] = _create_toon_mat(Color(0.35, 0.3, 0.4))      # Platforms
+	_materials["crystal_bat"] = _create_toon_mat(Color(0.4, 0.2, 0.5), true)   # Bat enemy
+	_materials["boss_crystal"] = _create_toon_mat(Color(0.6, 0.1, 0.8), true)  # W2 boss
+
 
 func _create_toon_mat(color: Color, with_outline: bool = false) -> ShaderMaterial:
 	var mat := ShaderMaterial.new()

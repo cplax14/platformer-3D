@@ -49,6 +49,7 @@ func _on_body_entered(body: Node3D) -> void:
 	GameManager.collect_star(star_index)
 	Particles.spawn_star_collect(global_position)
 	ScreenShake.shake_light()
+	AudioManager.play_sfx(SoundLibrary.star)
 
 	# Dramatic collect: scale up then vanish
 	var tween := create_tween()

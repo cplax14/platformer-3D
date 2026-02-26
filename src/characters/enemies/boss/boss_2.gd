@@ -1,23 +1,22 @@
 extends CharacterBody3D
 
-## Boss 1 — "King Slime"
-## 3 attack patterns, telegraphed for kids to read:
-##   1. SLAM: Jumps up, slams down (shockwave)
-##   2. BARRAGE: Spits 5 slow projectiles in a fan
-##   3. CHARGE: Winds up then charges across arena
-## After each attack, pauses (vulnerable window).
+## Boss 2 — "Crystal Golem"
+## 3 attack patterns:
+##   1. CRYSTAL_RAIN — spawn falling crystal projectiles at random arena positions
+##   2. SLAM — jump + slam with shockwave (like boss_1)
+##   3. SUMMON — spawn 2 crystal bats (max 4 alive)
+## After each attack, pauses (vulnerable window). 8 HP.
 
 signal boss_died
 signal health_changed(current_hp: int, max_hp: int)
 
-enum Phase { INTRO, IDLE, SLAM, BARRAGE, CHARGE, VULNERABLE, DEAD }
+enum Phase { INTRO, IDLE, CRYSTAL_RAIN, SLAM, SUMMON, VULNERABLE, DEAD }
 
-@export var max_hp: int = 6
+@export var max_hp: int = 8
 @export var slam_height: float = 10.0
-@export var charge_speed: float = 10.0
-@export var projectile_speed: float = 5.0
 @export var vulnerable_time: float = 2.5
 @export var idle_time: float = 1.5
+@export var max_summoned_bats: int = 4
 
 var hp: int
 var _phase: Phase = Phase.INTRO
@@ -25,8 +24,8 @@ var _phase_timer: float = 0.0
 var _attack_index: int = 0
 var _player: CharacterBody3D = null
 var _arena_center: Vector3 = Vector3.ZERO
-var _charge_dir: Vector3 = Vector3.ZERO
 var _is_invincible: bool = true
+var _summoned_bats: Array[Node] = []
 
 @onready var mesh: Node3D = $Mesh
 @onready var collision_shape: CollisionShape3D = $CollisionShape
@@ -34,7 +33,8 @@ var _is_invincible: bool = true
 @onready var damage_area: Area3D = $DamageArea
 @onready var shockwave_area: Area3D = $ShockwaveArea
 
-var _attack_order: Array[Phase] = [Phase.SLAM, Phase.BARRAGE, Phase.CHARGE]
+var _attack_order: Array[Phase] = [Phase.CRYSTAL_RAIN, Phase.SLAM, Phase.SUMMON]
+var _bat_scene: PackedScene = preload("res://src/characters/enemies/crystal_bat/crystal_bat.tscn")
 
 
 func _ready() -> void:
@@ -44,9 +44,11 @@ func _ready() -> void:
 	damage_area.body_entered.connect(_on_body_contact)
 	shockwave_area.monitoring = false
 
-	# Brief intro before fighting
 	_phase = Phase.INTRO
 	_phase_timer = 2.0
+
+	if mesh and MaterialLibrary:
+		mesh.material_override = MaterialLibrary.get_material("boss_crystal")
 
 	await get_tree().process_frame
 	var players := get_tree().get_nodes_in_group("player")
@@ -67,12 +69,12 @@ func _physics_process(delta: float) -> void:
 			_process_intro(delta)
 		Phase.IDLE:
 			_process_idle(delta)
+		Phase.CRYSTAL_RAIN:
+			_process_crystal_rain(delta)
 		Phase.SLAM:
 			_process_slam(delta)
-		Phase.BARRAGE:
-			_process_barrage(delta)
-		Phase.CHARGE:
-			_process_charge(delta)
+		Phase.SUMMON:
+			_process_summon(delta)
 		Phase.VULNERABLE:
 			_process_vulnerable(delta)
 
@@ -81,7 +83,6 @@ func _physics_process(delta: float) -> void:
 
 # === INTRO ===
 func _process_intro(_delta: float) -> void:
-	# Bounce menacingly
 	mesh.scale = Vector3.ONE * (1.0 + sin(_phase_timer * 4.0) * 0.1)
 	if _phase_timer <= 0.0:
 		_start_idle()
@@ -96,7 +97,6 @@ func _start_idle() -> void:
 
 
 func _process_idle(delta: float) -> void:
-	# Face the player
 	if _player:
 		var dir := (_player.global_position - global_position)
 		dir.y = 0.0
@@ -112,21 +112,50 @@ func _start_next_attack() -> void:
 	_attack_index += 1
 
 	match attack:
+		Phase.CRYSTAL_RAIN:
+			_start_crystal_rain()
 		Phase.SLAM:
 			_start_slam()
-		Phase.BARRAGE:
-			_start_barrage()
-		Phase.CHARGE:
-			_start_charge()
+		Phase.SUMMON:
+			_start_summon()
+
+
+# === CRYSTAL RAIN ===
+func _start_crystal_rain() -> void:
+	_phase = Phase.CRYSTAL_RAIN
+	_phase_timer = 2.0
+	_is_invincible = true
+	_spawn_crystal_rain()
+
+
+func _process_crystal_rain(_delta: float) -> void:
+	if _phase_timer <= 0.0:
+		_start_vulnerable()
+
+
+func _spawn_crystal_rain() -> void:
+	# Spawn 6 falling crystal projectiles at random arena positions
+	for i in range(6):
+		var offset := Vector3(
+			randf_range(-8.0, 8.0),
+			12.0,
+			randf_range(-8.0, 8.0)
+		)
+		var proj := _create_crystal_projectile()
+		get_parent().add_child(proj)
+		proj.global_position = _arena_center + offset
+		proj.set_meta("direction", Vector3.DOWN)
+		proj.set_meta("speed", 8.0)
+
+	AudioManager.play_sfx(SoundLibrary.crystal_shatter)
 
 
 # === SLAM ===
 func _start_slam() -> void:
 	_phase = Phase.SLAM
-	_phase_timer = 1.5  # Total slam duration
+	_phase_timer = 1.5
 	_is_invincible = true
 
-	# Jump up
 	var tween := create_tween()
 	tween.tween_property(self, "position:y", position.y + slam_height, 0.6).set_ease(Tween.EASE_OUT)
 	tween.tween_interval(0.3)
@@ -140,77 +169,53 @@ func _process_slam(_delta: float) -> void:
 
 
 func _slam_impact() -> void:
-	# Activate shockwave
 	shockwave_area.monitoring = true
-	# Camera shake would go here
+	Particles.spawn_ground_pound_impact(global_position)
+	ScreenShake.shake_medium()
 
-	# Brief shockwave then disable
 	await get_tree().create_timer(0.3).timeout
 	shockwave_area.monitoring = false
 
 
-# === BARRAGE ===
-func _start_barrage() -> void:
-	_phase = Phase.BARRAGE
+# === SUMMON ===
+func _start_summon() -> void:
+	_phase = Phase.SUMMON
 	_phase_timer = 1.5
 	_is_invincible = true
-	_fire_fan()
-
-
-func _process_barrage(_delta: float) -> void:
-	if _phase_timer <= 0.0:
-		_start_vulnerable()
-
-
-func _fire_fan() -> void:
-	if not _player:
-		return
-
-	var base_dir := (_player.global_position - global_position)
-	base_dir.y = 0.0
-	base_dir = base_dir.normalized()
-
-	# 5 projectiles in a fan pattern
-	for i in range(5):
-		var angle_offset := deg_to_rad(-40.0 + i * 20.0)
-		var dir := base_dir.rotated(Vector3.UP, angle_offset)
-
-		var proj := _create_projectile()
-		get_parent().add_child(proj)
-		proj.global_position = global_position + Vector3(0, 1.5, 0) + dir * 1.5
-		proj.set_meta("direction", dir)
-		proj.set_meta("speed", projectile_speed)
-
-
-# === CHARGE ===
-func _start_charge() -> void:
-	_phase = Phase.CHARGE
-	_phase_timer = 2.0
-	_is_invincible = true
-
-	if _player:
-		_charge_dir = (_player.global_position - global_position)
-		_charge_dir.y = 0.0
-		_charge_dir = _charge_dir.normalized()
 
 	# Windup telegraph
 	var tween := create_tween()
-	tween.tween_property(mesh, "scale", Vector3(1.4, 0.6, 1.4), 0.4)
-	tween.tween_property(mesh, "scale", Vector3(0.8, 1.3, 0.8), 0.2)
-	tween.tween_callback(func(): velocity = _charge_dir * charge_speed)
+	tween.tween_property(mesh, "scale", Vector3(1.3, 0.7, 1.3), 0.3)
+	tween.tween_property(mesh, "scale", Vector3.ONE, 0.2)
+	tween.tween_callback(_spawn_bats)
 
 
-func _process_charge(_delta: float) -> void:
-	# Stop charging when timer runs out or hits wall
+func _process_summon(_delta: float) -> void:
 	if _phase_timer <= 0.0:
-		velocity = Vector3.ZERO
-		mesh.scale = Vector3.ONE
 		_start_vulnerable()
-	elif is_on_wall():
-		velocity = Vector3.ZERO
-		mesh.scale = Vector3.ONE
-		# Stunned from wall hit — extra vulnerable time
-		_start_vulnerable()
+
+
+func _spawn_bats() -> void:
+	# Clean up dead bat references
+	var alive_bats: Array[Node] = []
+	for bat in _summoned_bats:
+		if is_instance_valid(bat):
+			alive_bats.append(bat)
+	_summoned_bats = alive_bats
+
+	var bats_to_spawn := mini(2, max_summoned_bats - _summoned_bats.size())
+	for i in range(bats_to_spawn):
+		var bat := _bat_scene.instantiate()
+		var offset := Vector3(
+			randf_range(-4.0, 4.0),
+			0.0,
+			randf_range(-4.0, 4.0)
+		)
+		get_parent().add_child(bat)
+		bat.global_position = global_position + offset + Vector3(0, 3.0, 0)
+		_summoned_bats.append(bat)
+
+	AudioManager.play_sfx(SoundLibrary.bat_screech)
 
 
 # === VULNERABLE ===
@@ -220,7 +225,6 @@ func _start_vulnerable() -> void:
 	_is_invincible = false
 	velocity = Vector3.ZERO
 
-	# Dizzy animation
 	var tween := create_tween()
 	tween.set_loops(int(vulnerable_time / 0.3))
 	tween.tween_property(mesh, "rotation:z", 0.15, 0.15)
@@ -270,7 +274,7 @@ func _flash_hurt() -> void:
 	AudioManager.play_sfx(SoundLibrary.enemy_hit)
 
 	# Damage particles burst from the boss
-	Particles.spawn_enemy_death(global_position + Vector3(0, 1.0, 0))
+	Particles.spawn_crystal_sparkle(global_position + Vector3(0, 1.0, 0))
 
 	# Red flash + dramatic squash
 	Juice.flash(mesh, Color(1.0, 0.0, 0.0), 0.25)
@@ -290,6 +294,15 @@ func _die() -> void:
 	collision_shape.set_deferred("disabled", true)
 	damage_area.set_deferred("monitoring", false)
 
+	# Kill all summoned bats
+	for bat in _summoned_bats:
+		if is_instance_valid(bat):
+			bat.queue_free()
+	_summoned_bats.clear()
+
+	Particles.spawn_crystal_sparkle(global_position + Vector3(0, 1.0, 0))
+	AudioManager.play_sfx(SoundLibrary.crystal_shatter)
+
 	var tween := create_tween()
 	tween.tween_property(mesh, "scale", Vector3(2.0, 0.1, 2.0), 0.3)
 	tween.tween_property(self, "position:y", position.y + 5.0, 0.4).set_ease(Tween.EASE_OUT)
@@ -301,21 +314,22 @@ func _die() -> void:
 	)
 
 
-func _create_projectile() -> Area3D:
+func _create_crystal_projectile() -> Area3D:
 	var proj := Area3D.new()
 	proj.collision_layer = 8
 	proj.collision_mask = 1
 
 	var mesh_inst := MeshInstance3D.new()
-	var sphere := SphereMesh.new()
-	sphere.radius = 0.2
-	sphere.height = 0.4
-	mesh_inst.mesh = sphere
+	var box := BoxMesh.new()
+	box.size = Vector3(0.3, 0.5, 0.3)
+	mesh_inst.mesh = box
+	if MaterialLibrary:
+		mesh_inst.material_override = MaterialLibrary.get_material("crystal")
 	proj.add_child(mesh_inst)
 
 	var col := CollisionShape3D.new()
-	var shape := SphereShape3D.new()
-	shape.radius = 0.25
+	var shape := BoxShape3D.new()
+	shape.size = Vector3(0.4, 0.6, 0.4)
 	col.shape = shape
 	proj.add_child(col)
 
@@ -324,13 +338,13 @@ func _create_projectile() -> Area3D:
 
 
 func _get_projectile_script() -> GDScript:
-	if not Engine.has_meta("boss_projectile_script"):
+	if not Engine.has_meta("crystal_projectile_script"):
 		var script := GDScript.new()
 		script.source_code = """extends Area3D
 
-var direction: Vector3 = Vector3.FORWARD
-var speed: float = 5.0
-var lifetime: float = 6.0
+var direction: Vector3 = Vector3.DOWN
+var speed: float = 8.0
+var lifetime: float = 4.0
 
 func _ready() -> void:
 	if has_meta("direction"):
@@ -350,5 +364,5 @@ func _on_body_entered(body: Node3D) -> void:
 	queue_free()
 """
 		script.reload()
-		Engine.set_meta("boss_projectile_script", script)
-	return Engine.get_meta("boss_projectile_script")
+		Engine.set_meta("crystal_projectile_script", script)
+	return Engine.get_meta("crystal_projectile_script")

@@ -1,0 +1,216 @@
+[gd_scene load_steps=18 format=3 uid="uid://level_2_3_scene"]
+
+[ext_resource type="PackedScene" uid="uid://player_scene" path="res://src/characters/player/player.tscn" id="1_player"]
+[ext_resource type="PackedScene" uid="uid://follow_camera_scene" path="res://src/systems/camera/follow_camera.tscn" id="2_camera"]
+[ext_resource type="PackedScene" uid="uid://hud_scene" path="res://src/ui/hud.tscn" id="3_hud"]
+[ext_resource type="PackedScene" uid="uid://pause_menu_scene" path="res://src/ui/pause_menu.tscn" id="4_pause"]
+[ext_resource type="PackedScene" uid="uid://coin_scene" path="res://src/objects/collectibles/coin.tscn" id="5_coin"]
+[ext_resource type="PackedScene" uid="uid://star_scene" path="res://src/objects/collectibles/star.tscn" id="7_star"]
+[ext_resource type="PackedScene" uid="uid://checkpoint_scene" path="res://src/objects/hazards/checkpoint.tscn" id="11_checkpoint"]
+[ext_resource type="PackedScene" uid="uid://crystal_bat_scene" path="res://src/characters/enemies/crystal_bat/crystal_bat.tscn" id="13_bat"]
+[ext_resource type="PackedScene" uid="uid://turret_scene" path="res://src/characters/enemies/turret/turret.tscn" id="14_turret"]
+[ext_resource type="PackedScene" uid="uid://charger_scene" path="res://src/characters/enemies/charger/charger.tscn" id="15_charger"]
+[ext_resource type="PackedScene" uid="uid://level_end_scene" path="res://src/objects/collectibles/level_end.tscn" id="16_end"]
+[ext_resource type="Script" path="res://src/levels/level_base.gd" id="17_base"]
+[ext_resource type="PackedScene" uid="uid://breakable_crate_scene" path="res://src/objects/hazards/breakable_crate.tscn" id="18_crate"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_1"]
+sky_top_color = Color(0.1, 0.05, 0.2, 1.0)
+sky_horizon_color = Color(0.2, 0.1, 0.3, 1.0)
+ground_bottom_color = Color(0.05, 0.02, 0.1, 1.0)
+ground_horizon_color = Color(0.15, 0.08, 0.25, 1.0)
+
+[sub_resource type="Sky" id="Sky_1"]
+sky_material = SubResource("ProceduralSkyMaterial_1")
+
+[sub_resource type="Environment" id="Environment_1"]
+background_mode = 2
+sky = SubResource("Sky_1")
+ambient_light_source = 2
+ambient_light_color = Color(0.4, 0.3, 0.5, 1.0)
+ambient_light_energy = 0.3
+tonemap_mode = 2
+
+[node name="Level_2_3" type="Node3D"]
+script = ExtResource("17_base")
+world_id = 2
+level_id = 3
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_1")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.7071, 0.7071, 0, -0.7071, 0.7071, 0, 20, 0)
+shadow_enabled = true
+light_color = Color(0.85, 0.9, 1.0, 1.0)
+light_energy = 0.6
+
+[node name="Player" parent="." instance=ExtResource("1_player")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+
+[node name="CameraRig" parent="." instance=ExtResource("2_camera")]
+target_path = NodePath("../Player")
+
+[node name="HUD" parent="." instance=ExtResource("3_hud")]
+[node name="PauseMenu" parent="." instance=ExtResource("4_pause")]
+
+; === SECTION 1: Crystal Labyrinth — start with ground slide tunnel ===
+[node name="StartGround" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
+use_collision = true
+collision_layer = 2
+collision_mask = 0
+size = Vector3(10, 1, 8)
+
+[node name="Coin1" parent="." instance=ExtResource("5_coin")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, -2)
+
+; Ground slide tunnel — low ceiling passage
+[node name="TunnelFloor" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, -10)
+use_collision = true
+collision_layer = 2
+collision_mask = 0
+size = Vector3(4, 1, 8)
+
+[node name="TunnelCeiling" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.3, -10)
+use_collision = true
+collision_layer = 2
+collision_mask = 0
+size = Vector3(4, 0.5, 8)
+
+; Coins inside the slide tunnel
+[node name="TunnelCoin1" parent="." instance=ExtResource("5_coin")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, -9)
+
+[node name="TunnelCoin2" parent="." instance=ExtResource("5_coin")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, -11)
+
+[node name="TunnelCoin3" parent="." instance=ExtResource("5_coin")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, -13)
+
+; === SECTION 2: Open cave with turret and bats ===
+[node name="CaveGround" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, -20)
+use_collision = true
+collision_layer = 2
+collision_mask = 0
+size = Vector3(16, 1, 10)
+
+[node name="Checkpoint1" parent="." instance=ExtResource("11_checkpoint")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 0, -18)
+
+[node name="Turret1" parent="." instance=ExtResource("14_turret")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0, -20)
+
+[node name="Bat1" parent="." instance=ExtResource("13_bat")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 0, -21)
+
+[node name="Coin2" parent="." instance=ExtResource("5_coin")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, -20)
+
+; Star 2: on a hidden ledge above the turret — wall run up a side wall
+[node name="WallRunWall" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 3, -20)
+use_collision = true
+collision_layer = 2
+collision_mask = 0
+size = Vector3(1, 7, 6)
+
+[node name="Star2Ledge" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 6, -20)
+use_collision = true
+collision_layer = 2
+collision_mask = 0
+size = Vector3(3, 1, 3)
+
+[node name="Star2" parent="." instance=ExtResource("7_star")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 7.5, -20)
+star_index = 1
+
+; === SECTION 3: Wall run combo section ===
+[node name="WallComboFloor" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, -32)
+use_collision = true
+collision_layer = 2
+collision_mask = 0
+size = Vector3(6, 1, 4)
+
+; Two walls facing each other — wall jump between them
+[node name="ComboWallL" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 4, -36)
+use_collision = true
+collision_layer = 2
+collision_mask = 0
+size = Vector3(1, 10, 5)
+
+[node name="ComboWallR" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 4, -36)
+use_collision = true
+collision_layer = 2
+collision_mask = 0
+size = Vector3(1, 10, 5)
+
+[node name="ComboReward" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -36)
+use_collision = true
+collision_layer = 2
+collision_mask = 0
+size = Vector3(6, 1, 5)
+
+[node name="Coin3" parent="." instance=ExtResource("5_coin")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 3, -36)
+
+[node name="Coin4" parent="." instance=ExtResource("5_coin")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 5, -36)
+
+[node name="Bat2" parent="." instance=ExtResource("13_bat")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6, -36)
+
+; === SECTION 4: Charger gauntlet + second slide tunnel ===
+[node name="ChargerGround" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -46)
+use_collision = true
+collision_layer = 2
+collision_mask = 0
+size = Vector3(14, 1, 8)
+
+[node name="Checkpoint2" parent="." instance=ExtResource("11_checkpoint")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 8.5, -44)
+checkpoint_id = 1
+
+[node name="Charger1" parent="." instance=ExtResource("15_charger")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 8.5, -47)
+
+; Breakable crate hiding secret path
+[node name="Crate1" parent="." instance=ExtResource("18_crate")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 8.5, -48)
+
+; Hidden behind the crate
+[node name="SecretPlatform" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 8, -48)
+use_collision = true
+collision_layer = 2
+collision_mask = 0
+size = Vector3(4, 1, 3)
+
+[node name="Star3" parent="." instance=ExtResource("7_star")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 9.5, -48)
+star_index = 2
+
+; === SECTION 5: Final approach ===
+[node name="EndPlatform" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -56)
+use_collision = true
+collision_layer = 2
+collision_mask = 0
+size = Vector3(8, 1, 6)
+
+[node name="Coin5" parent="." instance=ExtResource("5_coin")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 9.0, -54)
+
+[node name="LevelEnd" parent="." instance=ExtResource("16_end")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8.5, -57)
+next_world = 2
+next_level = 4

@@ -74,6 +74,7 @@ func take_hit(damage: int, from_position: Vector3) -> void:
 func _on_hurt(_from_position: Vector3) -> void:
 	# Default: brief red flash
 	_flash_red()
+	AudioManager.play_sfx_random_pitch(SoundLibrary.enemy_hit)
 
 
 func _die(from_position: Vector3) -> void:
@@ -81,6 +82,7 @@ func _die(from_position: Vector3) -> void:
 	died.emit()
 	Particles.spawn_enemy_death(global_position + Vector3(0, 0.5, 0))
 	ScreenShake.shake_light()
+	AudioManager.play_sfx(SoundLibrary.enemy_death)
 
 	# Disable collision immediately
 	collision_shape.set_deferred("disabled", true)

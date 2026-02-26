@@ -66,4 +66,4 @@ func _on_restart_pressed() -> void:
 func _on_quit_pressed() -> void:
 	resume()
 	GameManager.reset_game()
-	get_tree().change_scene_to_file("res://src/ui/main_menu.tscn")
+	SceneTransition.transition_to_scene("res://src/ui/main_menu.tscn")

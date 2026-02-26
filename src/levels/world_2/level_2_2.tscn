@@ -1,0 +1,185 @@
+[gd_scene load_steps=16 format=3 uid="uid://level_2_2_scene"]
+
+[ext_resource type="PackedScene" uid="uid://player_scene" path="res://src/characters/player/player.tscn" id="1_player"]
+[ext_resource type="PackedScene" uid="uid://follow_camera_scene" path="res://src/systems/camera/follow_camera.tscn" id="2_camera"]
+[ext_resource type="PackedScene" uid="uid://hud_scene" path="res://src/ui/hud.tscn" id="3_hud"]
+[ext_resource type="PackedScene" uid="uid://pause_menu_scene" path="res://src/ui/pause_menu.tscn" id="4_pause"]
+[ext_resource type="PackedScene" uid="uid://coin_scene" path="res://src/objects/collectibles/coin.tscn" id="5_coin"]
+[ext_resource type="PackedScene" uid="uid://star_scene" path="res://src/objects/collectibles/star.tscn" id="7_star"]
+[ext_resource type="PackedScene" uid="uid://crumbling_platform_scene" path="res://src/objects/platforms/crumbling_platform.tscn" id="9_crumble"]
+[ext_resource type="PackedScene" uid="uid://checkpoint_scene" path="res://src/objects/hazards/checkpoint.tscn" id="11_checkpoint"]
+[ext_resource type="PackedScene" uid="uid://crystal_bat_scene" path="res://src/characters/enemies/crystal_bat/crystal_bat.tscn" id="13_bat"]
+[ext_resource type="PackedScene" uid="uid://spiny_scene" path="res://src/characters/enemies/spiny/spiny.tscn" id="14_spiny"]
+[ext_resource type="PackedScene" uid="uid://level_end_scene" path="res://src/objects/collectibles/level_end.tscn" id="16_end"]
+[ext_resource type="Script" path="res://src/levels/level_base.gd" id="17_base"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_1"]
+sky_top_color = Color(0.1, 0.05, 0.2, 1.0)
+sky_horizon_color = Color(0.2, 0.1, 0.3, 1.0)
+ground_bottom_color = Color(0.05, 0.02, 0.1, 1.0)
+ground_horizon_color = Color(0.15, 0.08, 0.25, 1.0)
+
+[sub_resource type="Sky" id="Sky_1"]
+sky_material = SubResource("ProceduralSkyMaterial_1")
+
+[sub_resource type="Environment" id="Environment_1"]
+background_mode = 2
+sky = SubResource("Sky_1")
+ambient_light_source = 2
+ambient_light_color = Color(0.4, 0.3, 0.5, 1.0)
+ambient_light_energy = 0.3
+tonemap_mode = 2
+
+[node name="Level_2_2" type="Node3D"]
+script = ExtResource("17_base")
+world_id = 2
+level_id = 2
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_1")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.7071, 0.7071, 0, -0.7071, 0.7071, 0, 20, 0)
+shadow_enabled = true
+light_color = Color(0.85, 0.9, 1.0, 1.0)
+light_energy = 0.6
+
+[node name="Player" parent="." instance=ExtResource("1_player")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+
+[node name="CameraRig" parent="." instance=ExtResource("2_camera")]
+target_path = NodePath("../Player")
+
+[node name="HUD" parent="." instance=ExtResource("3_hud")]
+[node name="PauseMenu" parent="." instance=ExtResource("4_pause")]
+
+; === SECTION 1: The Deep — start on a ledge overlooking void ===
+[node name="StartGround" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
+use_collision = true
+collision_layer = 2
+collision_mask = 0
+size = Vector3(10, 1, 8)
+
+[node name="Coin1" parent="." instance=ExtResource("5_coin")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, -2)
+
+[node name="Coin2" parent="." instance=ExtResource("5_coin")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0.8, -2)
+
+; === SECTION 2: Crumbling platforms over void with bats ===
+[node name="Crumble1" parent="." instance=ExtResource("9_crumble")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -8)
+
+[node name="Crumble2" parent="." instance=ExtResource("9_crumble")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0, -12)
+
+[node name="Crumble3" parent="." instance=ExtResource("9_crumble")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -16)
+
+[node name="Bat1" parent="." instance=ExtResource("13_bat")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, -10)
+
+[node name="Coin3" parent="." instance=ExtResource("5_coin")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 1.0, -12)
+
+; === SECTION 3: Safe landing + checkpoint ===
+[node name="MidGround" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, -22)
+use_collision = true
+collision_layer = 2
+collision_mask = 0
+size = Vector3(12, 1, 8)
+
+[node name="Checkpoint1" parent="." instance=ExtResource("11_checkpoint")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 0, -21)
+
+[node name="Spiny1" parent="." instance=ExtResource("14_spiny")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 0, -23)
+
+[node name="Coin4" parent="." instance=ExtResource("5_coin")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, -23)
+
+; Star 2: above the spiny — requires defeating it + double jump
+[node name="Star2Platform" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 3, -23)
+use_collision = true
+collision_layer = 2
+collision_mask = 0
+size = Vector3(3, 1, 3)
+
+[node name="Star2" parent="." instance=ExtResource("7_star")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 4.5, -23)
+star_index = 1
+
+; === SECTION 4: Air dash required gap ===
+; Wide gap — too far for normal jump, requires air dash
+[node name="PreDashPlatform" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, -32)
+use_collision = true
+collision_layer = 2
+collision_mask = 0
+size = Vector3(6, 1, 5)
+
+; Coin trail mid-air across the gap to hint at air dash
+[node name="DashCoin1" parent="." instance=ExtResource("5_coin")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 1.5, -35)
+
+[node name="DashCoin2" parent="." instance=ExtResource("5_coin")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 1.5, -35)
+
+[node name="DashCoin3" parent="." instance=ExtResource("5_coin")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9, 1.5, -35)
+
+[node name="PostDashPlatform" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, -0.5, -35)
+use_collision = true
+collision_layer = 2
+collision_mask = 0
+size = Vector3(6, 1, 5)
+
+[node name="Bat2" parent="." instance=ExtResource("13_bat")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0, -35)
+
+; === SECTION 5: Final bats and approach to end ===
+[node name="FinalGround" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, -0.5, -44)
+use_collision = true
+collision_layer = 2
+collision_mask = 0
+size = Vector3(10, 1, 8)
+
+[node name="Checkpoint2" parent="." instance=ExtResource("11_checkpoint")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9, 0, -43)
+checkpoint_id = 1
+
+[node name="Bat3" parent="." instance=ExtResource("13_bat")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 0, -45)
+
+[node name="Coin5" parent="." instance=ExtResource("5_coin")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 0.8, -45)
+
+; Star 3: hidden behind final ground, accessible by dropping off-path
+[node name="SecretPlatform" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18, -2, -46)
+use_collision = true
+collision_layer = 2
+collision_mask = 0
+size = Vector3(3, 1, 3)
+
+[node name="Star3" parent="." instance=ExtResource("7_star")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18, -0.5, -46)
+star_index = 2
+
+; === GOAL ===
+[node name="EndPlatform" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 0, -52)
+use_collision = true
+collision_layer = 2
+collision_mask = 0
+size = Vector3(8, 1, 6)
+
+[node name="LevelEnd" parent="." instance=ExtResource("16_end")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 0.5, -53)
+next_world = 2
+next_level = 3

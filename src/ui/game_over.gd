@@ -43,4 +43,4 @@ func _on_quit_pressed() -> void:
 	get_tree().paused = false
 	visible = false
 	GameManager.reset_game()
-	get_tree().change_scene_to_file("res://src/ui/main_menu.tscn")
+	SceneTransition.transition_to_scene("res://src/ui/main_menu.tscn")

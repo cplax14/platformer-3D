@@ -43,6 +43,7 @@ func _on_body_entered(body: Node3D) -> void:
 
 func _play_collect_effect() -> void:
 	Particles.spawn_coin_collect(global_position)
+	AudioManager.play_sfx_random_pitch(SoundLibrary.coin)
 	var tween := create_tween()
 	tween.set_parallel(true)
 	tween.tween_property(self, "scale", Vector3.ZERO, 0.2).set_ease(Tween.EASE_IN)

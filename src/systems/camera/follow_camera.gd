@@ -84,15 +84,24 @@ func _update_look_ahead(delta: float) -> void:
 func _update_distance(delta: float) -> void:
 	var target_distance := default_distance
 
-	# Zoom out when player is airborne
 	if _target is CharacterBody3D:
 		var char_body := _target as CharacterBody3D
+		# Zoom out when player is airborne and falling
 		if not char_body.is_on_floor() and char_body.velocity.y < -2.0:
 			target_distance = jump_zoom_distance
 
 	_current_distance = lerp(_current_distance, target_distance, jump_zoom_speed * delta)
 	_current_distance = clampf(_current_distance, min_distance, max_distance)
 	spring_arm.spring_length = _current_distance
+
+	# During wall run, disable spring arm collision so the wall doesn't push the camera in
+	if _target is CharacterBody3D:
+		var char_body := _target as CharacterBody3D
+		if "current_state" in char_body and char_body.current_state == char_body.State.WALL_RUNNING:
+			spring_arm.spring_length = default_distance
+			spring_arm.collision_mask = 0
+		else:
+			spring_arm.collision_mask = 2
 
 
 func _update_position(delta: float) -> void:

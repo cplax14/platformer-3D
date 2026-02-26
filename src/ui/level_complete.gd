@@ -29,6 +29,13 @@ func show_results(world: int, level: int, next_w: int, next_l: int) -> void:
 	get_tree().paused = true
 	visible = true
 
+	# Hide "Next" button if there's no next level (final boss)
+	var next_path := "res://src/levels/world_%d/level_%d_%d.tscn" % [next_w, next_w, next_l]
+	if next_l == 4:
+		next_path = "res://src/levels/world_%d/level_%d_boss.tscn" % [next_w, next_w]
+	if not ResourceLoader.exists(next_path):
+		next_button.visible = false
+
 	# Title
 	if level == 4:
 		title_label.text = "Boss Defeated!"
@@ -73,6 +80,6 @@ func _on_replay_pressed() -> void:
 
 
 func _on_select_pressed() -> void:
-	get_tree().paused = false
 	visible = false
-	get_tree().change_scene_to_file("res://src/ui/level_select.tscn")
+	get_tree().paused = false
+	SceneTransition.transition_to_scene("res://src/ui/level_select.tscn")

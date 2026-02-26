@@ -29,6 +29,7 @@ func _break() -> void:
 	_destroyed = true
 	Particles.spawn_crate_break(global_position + Vector3(0, 0.5, 0))
 	ScreenShake.shake_light()
+	AudioManager.play_sfx_random_pitch(SoundLibrary.crate_break)
 
 	# Spawn drop if configured
 	if drop_scene:
