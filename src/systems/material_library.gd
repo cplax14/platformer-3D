@@ -25,6 +25,13 @@ func _create_materials() -> void:
 	# Player
 	_materials["player"] = _create_toon_mat(Color(0.2, 0.6, 1.0), true)  # Bright blue
 
+	# Player color variants (shop)
+	_materials["player_red"] = _create_toon_mat(Color(1.0, 0.25, 0.2), true)
+	_materials["player_green"] = _create_toon_mat(Color(0.2, 0.85, 0.3), true)
+	_materials["player_gold"] = _create_toon_mat(Color(1.0, 0.85, 0.0), true)
+	_materials["player_purple"] = _create_toon_mat(Color(0.6, 0.2, 0.9), true)
+	_materials["player_pink"] = _create_toon_mat(Color(1.0, 0.4, 0.7), true)
+
 	# Environment
 	_materials["ground"] = _create_toon_mat(Color(0.3, 0.7, 0.25))       # Green grass
 	_materials["platform"] = _create_toon_mat(Color(0.65, 0.5, 0.3))     # Brown wood

@@ -13,6 +13,17 @@ var _default_data: Dictionary = {
 		"music_volume": 0.8,
 		"sfx_volume": 1.0,
 	},
+	"coin_bank": 0,
+	"unlocked_abilities": {"wall_run": false, "wall_slide": false, "dash": false},
+	"owned_colors": ["blue"],
+	"selected_color": "blue",
+	"assists": {
+		"assist_coyote": false,
+		"assist_slow_fall": false,
+		"assist_inf_jumps": false,
+		"assist_wall_angles": false,
+	},
+	"best_times": {},
 }
 
 
@@ -21,6 +32,11 @@ func save_game() -> void:
 		"collected_stars": GameManager.collected_stars.duplicate(true),
 		"unlocked_worlds": _get_unlocked_worlds(),
 		"settings": _get_settings(),
+		"coin_bank": GameManager.coin_bank,
+		"owned_colors": GameManager.owned_colors.duplicate(),
+		"selected_color": GameManager.selected_color,
+		"assists": GameManager.assists.duplicate(),
+		"best_times": GameManager.best_times.duplicate(),
 	}
 
 	var json_string := JSON.stringify(data, "\t")
@@ -59,6 +75,29 @@ func load_game() -> void:
 	# Restore settings
 	if data.has("settings"):
 		_apply_settings(data["settings"])
+
+	# Restore coin bank
+	if data.has("coin_bank"):
+		GameManager.coin_bank = int(data["coin_bank"])
+
+	# Restore color shop
+	if data.has("owned_colors"):
+		GameManager.owned_colors = data["owned_colors"]
+	if data.has("selected_color"):
+		GameManager.selected_color = data["selected_color"]
+
+	# Restore assists
+	if data.has("assists"):
+		var saved_assists: Dictionary = data["assists"]
+		for key in saved_assists:
+			GameManager.assists[key] = saved_assists[key]
+
+	# Restore best times
+	if data.has("best_times"):
+		GameManager.best_times = data["best_times"]
+
+	# Derive ability state from stars
+	GameManager.refresh_abilities()
 
 
 func delete_save() -> void:

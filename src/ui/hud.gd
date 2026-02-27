@@ -1,6 +1,7 @@
 extends CanvasLayer
 
-## HUD — displays health hearts, coin count, star indicators, and boss HP bar.
+## HUD — displays health hearts, coin count, star indicators, boss HP bar,
+## and time trial timer.
 
 @onready var hearts_container: HBoxContainer = $MarginContainer/TopBar/Hearts
 @onready var coin_label: Label = $MarginContainer/TopBar/CoinDisplay/CoinCount
@@ -23,6 +24,10 @@ var _boss_bar_bg: ColorRect
 var _boss_bar_fill: ColorRect
 var _boss_max_hp: int = 1
 
+# Time trial
+var _timer_label: Label
+var _best_label: Label
+
 
 func _ready() -> void:
 	GameManager.health_changed.connect(_on_health_changed)
@@ -36,6 +41,16 @@ func _ready() -> void:
 
 	# Search for boss and connect HP bar
 	_setup_boss_bar()
+
+	# Create timer display
+	_create_timer_display()
+
+	# Connect new best time signal
+	GameManager.new_best_time.connect(_on_new_best_time)
+
+
+func _process(_delta: float) -> void:
+	_update_timer_display()
 
 
 func _on_health_changed(new_health: int) -> void:
@@ -72,6 +87,80 @@ func _refresh_stars() -> void:
 		else:
 			star_nodes[i].modulate = STAR_EMPTY_COLOR
 
+
+# --- Timer Display ---
+
+func _create_timer_display() -> void:
+	var margin := $MarginContainer
+
+	# Timer label at top-right
+	_timer_label = Label.new()
+	_timer_label.add_theme_font_size_override("font_size", 24)
+	_timer_label.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 0.9))
+	_timer_label.text = "0:00.00"
+	_timer_label.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_timer_label.offset_left = -120.0
+	_timer_label.offset_top = 5.0
+	_timer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	margin.add_child(_timer_label)
+
+	# Best time label below timer
+	_best_label = Label.new()
+	_best_label.add_theme_font_size_override("font_size", 16)
+	_best_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7, 0.7))
+	_best_label.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_best_label.offset_left = -120.0
+	_best_label.offset_top = 32.0
+	_best_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+
+	var lid := "%d_%d" % [GameManager.current_world, GameManager.current_level]
+	var best := GameManager.get_best_time(lid)
+	if best >= 0.0:
+		_best_label.text = "Best: " + _format_time(best)
+	else:
+		_best_label.text = ""
+	margin.add_child(_best_label)
+
+
+func _update_timer_display() -> void:
+	if not _timer_label:
+		return
+
+	_timer_label.text = _format_time(GameManager.trial_time)
+
+
+func _on_new_best_time(_lid: String, _time: float) -> void:
+	_show_new_best()
+
+
+func _format_time(seconds: float) -> String:
+	var minutes := int(seconds) / 60
+	var secs := int(seconds) % 60
+	var centiseconds := int(fmod(seconds, 1.0) * 100)
+	return "%d:%02d.%02d" % [minutes, secs, centiseconds]
+
+
+func _show_new_best() -> void:
+	var new_best_label := Label.new()
+	new_best_label.text = "NEW BEST!"
+	new_best_label.add_theme_font_size_override("font_size", 32)
+	new_best_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.0, 1.0))
+	new_best_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	new_best_label.offset_top = 60.0
+	new_best_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	add_child(new_best_label)
+
+	# Bounce animation
+	new_best_label.scale = Vector2.ZERO
+	var tween := create_tween()
+	tween.tween_property(new_best_label, "scale", Vector2(1.2, 1.2), 0.3).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_ELASTIC)
+	tween.tween_property(new_best_label, "scale", Vector2.ONE, 0.15).set_ease(Tween.EASE_IN_OUT)
+	tween.tween_interval(2.0)
+	tween.tween_property(new_best_label, "modulate:a", 0.0, 0.5)
+	tween.tween_callback(new_best_label.queue_free)
+
+
+# --- Boss Bar ---
 
 func _setup_boss_bar() -> void:
 	# Wait a frame for the scene to fully load, then find boss
