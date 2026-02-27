@@ -138,8 +138,9 @@ func _physics_process(delta: float) -> void:
 
 func _update_timers(delta: float) -> void:
 	# Coyote time: allow jumping shortly after leaving a ledge
+	var effective_coyote := 0.4 if GameManager.get_assist("assist_coyote") else coyote_time
 	if is_on_floor():
-		_coyote_timer = coyote_time
+		_coyote_timer = effective_coyote
 	else:
 		_coyote_timer = maxf(_coyote_timer - delta, 0.0)
 
@@ -194,8 +195,10 @@ func _apply_gravity(delta: float) -> void:
 		return
 
 	if not is_on_floor():
-		velocity.y -= gravity * delta
-		velocity.y = maxf(velocity.y, -max_fall_speed)
+		var effective_gravity := 18.0 if GameManager.get_assist("assist_slow_fall") else gravity
+		var effective_max_fall := 15.0 if GameManager.get_assist("assist_slow_fall") else max_fall_speed
+		velocity.y -= effective_gravity * delta
+		velocity.y = maxf(velocity.y, -effective_max_fall)
 
 		# Variable jump height: cut upward velocity when releasing jump
 		if velocity.y > 0.0 and not Input.is_action_pressed("jump"):
@@ -221,7 +224,8 @@ func _handle_jump() -> void:
 	# Double jump
 	if wants_jump and not is_on_floor() and _has_double_jump and _coyote_timer <= 0.0:
 		_perform_jump(double_jump_force)
-		_has_double_jump = false
+		if not GameManager.get_assist("assist_inf_jumps"):
+			_has_double_jump = false
 		_jump_buffer_timer = 0.0
 		AudioManager.play_sfx(SoundLibrary.double_jump)
 
@@ -242,6 +246,9 @@ func _perform_jump(force: float) -> void:
 
 
 func _handle_wall_run(delta: float) -> void:
+	if not GameManager.is_ability_unlocked("wall_run"):
+		return
+
 	# While wall running
 	if _is_wall_running:
 		_wall_run_timer -= delta
@@ -291,7 +298,8 @@ func _handle_wall_run(delta: float) -> void:
 
 	_wall_normal = get_wall_normal()
 	# Check player is pressing toward the wall (generous angle for kids)
-	var pressing_toward_wall := _input_direction.dot(-_wall_normal) > 0.3
+	var wall_threshold := 0.0 if GameManager.get_assist("assist_wall_angles") else 0.3
+	var pressing_toward_wall := _input_direction.dot(-_wall_normal) > wall_threshold
 	if not pressing_toward_wall:
 		return
 
@@ -321,6 +329,9 @@ func _end_wall_run() -> void:
 
 
 func _handle_wall_slide(delta: float) -> void:
+	if not GameManager.is_ability_unlocked("wall_slide"):
+		return
+
 	# While wall sliding
 	if _is_wall_sliding:
 		# Wall jump from slide
@@ -375,6 +386,9 @@ func _end_wall_slide() -> void:
 
 
 func _handle_dash(delta: float) -> void:
+	if not GameManager.is_ability_unlocked("dash"):
+		return
+
 	# During dash
 	if _is_dashing:
 		_dash_timer -= delta
@@ -670,7 +684,8 @@ func _build_robot_mesh() -> void:
 		mesh.mesh = null
 	mesh.material_override = null
 
-	var player_mat: ShaderMaterial = MaterialLibrary.get_material("player")
+	var color_key := "player_" + GameManager.selected_color if GameManager.selected_color != "blue" else "player"
+	var player_mat: ShaderMaterial = MaterialLibrary.get_material(color_key)
 	var white_mat := StandardMaterial3D.new()
 	white_mat.albedo_color = Color(0.95, 0.95, 1.0)
 	white_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED

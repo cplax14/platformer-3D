@@ -116,6 +116,20 @@ func _build_level_buttons() -> void:
 		star_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.0) if stars > 0 else Color(0.5, 0.5, 0.5))
 		hbox.add_child(star_label)
 
+		# Best time display
+		var time_label := Label.new()
+		time_label.add_theme_font_size_override("font_size", 18)
+		var best_time := GameManager.get_best_time(level_id)
+		if best_time >= 0.0:
+			var minutes := int(best_time) / 60
+			var secs := int(best_time) % 60
+			var centiseconds := int(fmod(best_time, 1.0) * 100)
+			time_label.text = "Best: %d:%02d.%02d" % [minutes, secs, centiseconds]
+			time_label.add_theme_color_override("font_color", Color(0.7, 0.85, 1.0))
+		else:
+			time_label.text = ""
+		hbox.add_child(time_label)
+
 		level_list.add_child(hbox)
 
 	# Show unlock hint for locked worlds
@@ -131,8 +145,7 @@ func _build_level_buttons() -> void:
 func _is_world_unlocked(world_index: int) -> bool:
 	if world_index == 0:
 		return true
-	# World 2 requires all 9 W1 stars (3 per level * 3 levels + boss doesn't have stars counted here)
-	# Actually check total W1 stars: levels 1_1, 1_2, 1_3, 1_4
+	# World 2 requires 9 stars across all W1 levels (1_1 through 1_4, including boss star)
 	var w1_stars := 0
 	for i in range(1, 5):
 		w1_stars += GameManager.get_star_count("1_%d" % i)

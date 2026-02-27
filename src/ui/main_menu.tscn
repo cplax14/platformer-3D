@@ -56,6 +56,12 @@ custom_minimum_size = Vector2(250, 60)
 theme_override_font_sizes/font_size = 28
 text = "Options"
 
+[node name="ShopButton" type="Button" parent="CenterContainer/VBoxContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(250, 60)
+theme_override_font_sizes/font_size = 28
+text = "Shop"
+
 [node name="QuitButton" type="Button" parent="CenterContainer/VBoxContainer"]
 layout_mode = 2
 custom_minimum_size = Vector2(250, 60)
@@ -64,4 +70,5 @@ text = "Quit"
 
 [connection signal="pressed" from="CenterContainer/VBoxContainer/PlayButton" to="." method="_on_play_pressed"]
 [connection signal="pressed" from="CenterContainer/VBoxContainer/OptionsButton" to="." method="_on_options_pressed"]
+[connection signal="pressed" from="CenterContainer/VBoxContainer/ShopButton" to="." method="_on_shop_pressed"]
 [connection signal="pressed" from="CenterContainer/VBoxContainer/QuitButton" to="." method="_on_quit_pressed"]
