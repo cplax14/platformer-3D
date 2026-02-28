@@ -120,6 +120,8 @@ func _start_music() -> void:
 		AudioManager.play_music(MusicLibrary.world_1)
 	elif world_id == 2:
 		AudioManager.play_music(MusicLibrary.world_2)
+	elif world_id == 3:
+		AudioManager.play_music(MusicLibrary.world_3)
 
 
 func complete_level() -> void:

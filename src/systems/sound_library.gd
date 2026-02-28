@@ -30,6 +30,10 @@ var slide: AudioStreamWAV
 var bat_screech: AudioStreamWAV
 var bat_swoop: AudioStreamWAV
 var crystal_shatter: AudioStreamWAV
+var grapple_fire: AudioStreamWAV
+var grapple_pull: AudioStreamWAV
+var grapple_release: AudioStreamWAV
+var grapple_arrive: AudioStreamWAV
 
 
 func _ready() -> void:
@@ -55,6 +59,10 @@ func _ready() -> void:
 	bat_screech = _make_chirp(800.0, 1200.0, 0.08, 0.5)
 	bat_swoop = _make_filtered_noise_sweep(0.15, 0.5)
 	crystal_shatter = _mix([_make_sine(1200.0, 0.1, 0.5), _make_noise(0.12, 0.4)])
+	grapple_fire = _mix([_make_chirp(400.0, 900.0, 0.1, 0.5), _make_noise(0.05, 0.3)])
+	grapple_pull = _make_filtered_noise_sweep(0.2, 0.4)
+	grapple_release = _make_chirp(600.0, 300.0, 0.08, 0.5)
+	grapple_arrive = _mix([_make_sine(100.0, 0.15, 0.5), _make_two_tone(500.0, 700.0, 0.15, 0.4)])
 
 
 ## Generate a pure sine wave tone.

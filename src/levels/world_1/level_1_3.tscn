@@ -202,44 +202,40 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 11.8, -36)
 [node name="Crate1" parent="." unique_id=945735410 instance=ExtResource("12_crate")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 11, -38)
 
-; === SECTION: Slide Tunnel — low-ceiling passage before final ground ===
-; Ground slide through for speed + coins
-[node name="SlideTunnelFloor" type="CSGBox3D" parent="."]
+[node name="SlideTunnelFloor" type="CSGBox3D" parent="." unique_id=1426224421]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 10.5, -42)
 use_collision = true
 collision_layer = 2
 collision_mask = 0
 size = Vector3(4, 1, 4)
 
-[node name="SlideTunnelCeiling" type="CSGBox3D" parent="."]
+[node name="SlideTunnelCeiling" type="CSGBox3D" parent="." unique_id=187986094]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 12.3, -42)
 use_collision = true
 collision_layer = 2
 collision_mask = 0
 size = Vector3(4, 0.5, 4)
 
-[node name="SlideCoin1" parent="." instance=ExtResource("5_coin")]
+[node name="SlideCoin1" parent="." unique_id=468963389 instance=ExtResource("5_coin")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 11.2, -41)
 
-[node name="SlideCoin2" parent="." instance=ExtResource("5_coin")]
+[node name="SlideCoin2" parent="." unique_id=1203780934 instance=ExtResource("5_coin")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 11.2, -43)
 
-; === Wall Slide Descent — tall wall next to TowerLedge2 for safe descent from TowerTop ===
-[node name="WallSlideWall" type="CSGBox3D" parent="."]
+[node name="WallSlideWall" type="CSGBox3D" parent="." unique_id=475109306]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7, 6, -22)
 use_collision = true
 collision_layer = 2
 collision_mask = 0
 size = Vector3(1, 12, 4)
 
-; Coins along the wall slide path down
-[node name="WallSlideCoin1" parent="." instance=ExtResource("5_coin")]
+[node name="WallSlideCoin1" parent="." unique_id=619112525 instance=ExtResource("5_coin")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 9, -22)
 
-[node name="WallSlideCoin2" parent="." instance=ExtResource("5_coin")]
+[node name="WallSlideCoin2" parent="." unique_id=375320272 instance=ExtResource("5_coin")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 6, -22)
 
-[node name="WallSlideCoin3" parent="." instance=ExtResource("5_coin")]
+[node name="WallSlideCoin3" parent="." unique_id=1317168407 instance=ExtResource("5_coin")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 3, -22)
 
 [node name="FinalGround" type="CSGBox3D" parent="." unique_id=1416346230]

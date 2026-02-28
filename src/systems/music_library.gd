@@ -10,6 +10,7 @@ const MIX_RATE: int = 22050
 # Cached music streams (populated in _ready)
 var world_1: AudioStreamWAV
 var world_2: AudioStreamWAV
+var world_3: AudioStreamWAV
 var boss: AudioStreamWAV
 var menu: AudioStreamWAV
 
@@ -24,6 +25,7 @@ func _ready() -> void:
 func _generate_remaining() -> void:
 	world_1 = _generate_world_1()
 	world_2 = _generate_world_2()
+	world_3 = _generate_world_3()
 	boss = _generate_boss()
 
 
@@ -144,6 +146,65 @@ func _generate_world_2() -> AudioStreamWAV:
 		var echo_val: float = echo_buffer[echo_idx]
 		echo_buffer[echo_idx] = sample
 		sample = sample * 0.7 + echo_val * 0.3
+
+		var sample_int := clampi(int(sample * 32767.0), -32768, 32767)
+		data[i * 2] = sample_int & 0xFF
+		data[i * 2 + 1] = (sample_int >> 8) & 0xFF
+
+	return _pack_looping_wav(data)
+
+
+## World 3 — Uplifting D major, 130 BPM. Bright arpeggios, soaring feel for Sky Fortress.
+func _generate_world_3() -> AudioStreamWAV:
+	var bpm := 130.0
+	var beat_duration := 60.0 / bpm
+	var bar_duration := beat_duration * 4.0
+	var total_duration := bar_duration * 8.0
+	var samples := int(SAMPLE_RATE * total_duration)
+	var data := PackedByteArray()
+	data.resize(samples * 2)
+
+	# D major pentatonic: D4, E4, F#4, A4, B4, D5
+	var melody_notes := [293.7, 329.6, 370.0, 440.0, 493.9, 587.3]
+	# Bass: D3, A2, G2, E3
+	var bass_notes := [146.8, 110.0, 98.0, 164.8]
+
+	var melody_pattern := [0, -1, 2, -1, 4, -1, 5, -1, 4, -1, 2, -1, 3, -1, 1, -1,
+		0, -1, 3, -1, 5, -1, 4, -1, 2, -1, 3, -1, 4, -1, 5, -1,
+		5, -1, 4, -1, 3, -1, 2, -1, 0, -1, 1, -1, 2, -1, 3, -1,
+		4, -1, 5, -1, 4, -1, 2, -1, 0, -1, 1, -1, 0, -1, -1, -1]
+	var bass_pattern := [0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3,
+		0, 0, 0, 0, 2, 2, 2, 2, 1, 1, 1, 1, 0, 0, 0, 0]
+
+	var eighth_duration := beat_duration * 0.5
+
+	for i in range(samples):
+		var t := float(i) / SAMPLE_RATE
+		var sample := 0.0
+
+		# Melody: bright sine with shimmer
+		var eighth_idx := int(t / eighth_duration) % melody_pattern.size()
+		var note_idx: int = melody_pattern[eighth_idx]
+		if note_idx >= 0:
+			var note_t := fmod(t, eighth_duration)
+			var env := maxf(1.0 - note_t / (eighth_duration * 0.9), 0.0)
+			var freq: float = melody_notes[note_idx]
+			sample += sin(t * freq * TAU) * 0.22 * env
+			# Octave shimmer
+			sample += sin(t * freq * 2.0 * TAU) * 0.06 * env
+
+		# Bass: warm sine
+		var beat_idx := int(t / beat_duration) % bass_pattern.size()
+		var bass_freq: float = bass_notes[bass_pattern[beat_idx]]
+		var bass_t := fmod(t, beat_duration)
+		var bass_env := maxf(1.0 - bass_t / (beat_duration * 0.8), 0.0)
+		sample += sin(t * bass_freq * TAU) * 0.14 * bass_env
+
+		# Light percussion on beats
+		var beat_in_bar := fmod(t, bar_duration) / beat_duration
+		var beat_phase := fmod(beat_in_bar, 1.0)
+		if beat_phase < 0.03:
+			sample += randf_range(-0.1, 0.1) * (1.0 - beat_phase / 0.03)
 
 		var sample_int := clampi(int(sample * 32767.0), -32768, 32767)
 		data[i * 2] = sample_int & 0xFF

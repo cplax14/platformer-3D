@@ -18,6 +18,7 @@ const ABILITY_DISPLAY_NAMES: Dictionary = {
 	"wall_run": "Wall Run",
 	"wall_slide": "Wall Slide",
 	"dash": "Air Dash",
+	"grapple": "Grapple Hook",
 }
 
 
