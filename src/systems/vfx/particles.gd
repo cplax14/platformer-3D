@@ -292,6 +292,85 @@ func spawn_spin_ring(pos: Vector3) -> void:
 	})
 
 
+func spawn_grapple_launch(pos: Vector3, direction: Vector3) -> void:
+	spawn_at(pos, {
+		"amount": 12,
+		"lifetime": 0.3,
+		"explosiveness": 1.0,
+		"direction": direction,
+		"spread": 30.0,
+		"vel_min": 4.0,
+		"vel_max": 8.0,
+		"gravity": Vector3(0, 0, 0),
+		"scale_min": 0.03,
+		"scale_max": 0.08,
+		"color": Color(0.3, 0.8, 1.0, 0.9),
+	})
+
+
+func spawn_grapple_trail(pos: Vector3, direction: Vector3) -> void:
+	spawn_at(pos, {
+		"amount": 6,
+		"lifetime": 0.2,
+		"direction": -direction,
+		"spread": 15.0,
+		"vel_min": 2.0,
+		"vel_max": 5.0,
+		"gravity": Vector3(0, 0, 0),
+		"scale_min": 0.02,
+		"scale_max": 0.06,
+		"color": Color(0.4, 0.85, 1.0, 0.7),
+	})
+
+
+func spawn_grapple_arrive(pos: Vector3) -> void:
+	spawn_at(pos, {
+		"amount": 16,
+		"lifetime": 0.4,
+		"explosiveness": 1.0,
+		"direction": Vector3(0, 1, 0),
+		"spread": 90.0,
+		"vel_min": 3.0,
+		"vel_max": 6.0,
+		"gravity": Vector3(0, -6, 0),
+		"scale_min": 0.05,
+		"scale_max": 0.12,
+		"color": Color(0.3, 0.9, 1.0, 1.0),
+	})
+
+
+func spawn_grapple_release(pos: Vector3) -> void:
+	spawn_at(pos, {
+		"amount": 10,
+		"lifetime": 0.3,
+		"explosiveness": 1.0,
+		"direction": Vector3(0, 0, 0),
+		"spread": 180.0,
+		"vel_min": 3.0,
+		"vel_max": 6.0,
+		"gravity": Vector3(0, -4, 0),
+		"scale_min": 0.03,
+		"scale_max": 0.08,
+		"color": Color(0.5, 0.9, 1.0, 0.8),
+	})
+
+
+func spawn_anchor_targeted(pos: Vector3) -> void:
+	spawn_at(pos, {
+		"amount": 6,
+		"lifetime": 0.5,
+		"explosiveness": 0.6,
+		"direction": Vector3(0, 1, 0),
+		"spread": 45.0,
+		"vel_min": 0.5,
+		"vel_max": 1.5,
+		"gravity": Vector3(0, -1, 0),
+		"scale_min": 0.02,
+		"scale_max": 0.05,
+		"color": Color(0.4, 0.9, 1.0, 0.6),
+	})
+
+
 func spawn_crate_break(pos: Vector3) -> void:
 	spawn_at(pos, {
 		"amount": 14,

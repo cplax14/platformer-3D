@@ -14,7 +14,7 @@ var _default_data: Dictionary = {
 		"sfx_volume": 1.0,
 	},
 	"coin_bank": 0,
-	"unlocked_abilities": {"wall_run": false, "wall_slide": false, "dash": false},
+	"unlocked_abilities": {"wall_run": false, "wall_slide": false, "dash": false, "grapple": false},
 	"owned_colors": ["blue"],
 	"selected_color": "blue",
 	"assists": {
@@ -110,17 +110,19 @@ func has_save() -> bool:
 
 
 func _get_unlocked_worlds() -> Array:
-	# Unlock next world when all stars in current world collected
 	var unlocked := [1]
-	for world in range(1, 4):
-		var all_stars := true
-		for level in range(1, 4):
-			var level_id := "%d_%d" % [world, level]
-			if GameManager.get_star_count(level_id) < 3:
-				all_stars = false
-				break
-		if all_stars and world + 1 <= 3:
-			unlocked.append(world + 1)
+
+	# World 2 unlocks when all W1 stars collected (9 stars across 1_1..1_4)
+	var w1_stars := 0
+	for i in range(1, 5):
+		w1_stars += GameManager.get_star_count("1_%d" % i)
+	if w1_stars >= 9:
+		unlocked.append(2)
+
+	# World 3 unlocks when W2 boss is beaten (star on "2_4")
+	if GameManager.get_star_count("2_4") > 0:
+		unlocked.append(3)
+
 	return unlocked
 
 

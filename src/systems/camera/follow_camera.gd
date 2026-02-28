@@ -15,9 +15,10 @@ extends Node3D
 @export var min_distance: float = 4.0
 @export var max_distance: float = 12.0
 @export var orbit_speed: float = 2.0
+@export var pitch_speed: float = 1.5
 @export var pitch_angle: float = -20.0  # Degrees, negative = looking down
-@export var min_pitch: float = -45.0
-@export var max_pitch: float = -5.0
+@export var min_pitch: float = -60.0
+@export var max_pitch: float = 10.0
 
 # Look-ahead
 @export var look_ahead_distance: float = 2.0
@@ -64,6 +65,11 @@ func _physics_process(delta: float) -> void:
 func _handle_camera_input(delta: float) -> void:
 	var camera_input := Input.get_action_strength("camera_right") - Input.get_action_strength("camera_left")
 	_yaw -= camera_input * orbit_speed * delta
+
+	# Vertical pitch control (camera_up looks up = increase pitch, camera_down looks down)
+	var pitch_input := Input.get_action_strength("camera_up") - Input.get_action_strength("camera_down")
+	pitch_angle += pitch_input * pitch_speed * delta * 60.0  # Scale to feel consistent
+	pitch_angle = clampf(pitch_angle, min_pitch, max_pitch)
 
 
 func _update_look_ahead(delta: float) -> void:

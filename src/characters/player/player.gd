@@ -48,6 +48,12 @@ extends CharacterBody3D
 @export var slide_deceleration: float = 20.0
 @export var slide_jump_boost: float = 2.0
 
+# Grapple
+@export var grapple_range: float = 15.0
+@export var grapple_pull_speed: float = 18.0
+@export var grapple_arrive_distance: float = 1.5
+@export var grapple_release_boost: float = 3.0
+
 # Gravity
 @export var gravity: float = 30.0
 @export var max_fall_speed: float = 30.0
@@ -60,7 +66,7 @@ extends CharacterBody3D
 @onready var animation_player: AnimationPlayer = $AnimationPlayer
 
 # State
-enum State { IDLE, RUNNING, JUMPING, FALLING, DOUBLE_JUMPING, GROUND_POUND, SPIN_ATTACK, WALL_RUNNING, DASHING, WALL_SLIDING, SLIDING }
+enum State { IDLE, RUNNING, JUMPING, FALLING, DOUBLE_JUMPING, GROUND_POUND, SPIN_ATTACK, WALL_RUNNING, DASHING, WALL_SLIDING, SLIDING, GRAPPLING }
 var current_state: State = State.IDLE
 
 var _coyote_timer: float = 0.0
@@ -92,6 +98,14 @@ var _wall_slide_normal: Vector3 = Vector3.ZERO
 var _is_sliding: bool = false
 var _slide_timer: float = 0.0
 var _slide_direction: Vector3 = Vector3.ZERO
+
+# Grapple state
+var _is_grappling: bool = false
+var _grapple_target: Node3D = null
+var _nearest_anchor: Node3D = null
+var _grapple_rope_mesh: MeshInstance3D = null
+var _grapple_rope_material: StandardMaterial3D = null
+var _post_grapple_jump: bool = false  # Gives an extra jump after grapple ends
 
 # Animation time accumulator
 var _anim_time: float = 0.0
@@ -125,6 +139,7 @@ func _physics_process(delta: float) -> void:
 	_handle_wall_run(delta)
 	_handle_wall_slide(delta)
 	_handle_dash(delta)
+	_handle_grapple(delta)
 	_handle_ground_pound()
 	_handle_spin_attack(delta)
 	_handle_ground_slide(delta)
@@ -191,7 +206,7 @@ func _apply_gravity(delta: float) -> void:
 		velocity.y = -ground_pound_speed
 		return
 
-	if _is_wall_running or _is_dashing:
+	if _is_wall_running or _is_dashing or _is_grappling:
 		return
 
 	if not is_on_floor():
@@ -206,7 +221,7 @@ func _apply_gravity(delta: float) -> void:
 
 
 func _handle_jump() -> void:
-	if _is_ground_pounding or current_state == State.SPIN_ATTACK or _is_wall_running or _is_dashing or _is_wall_sliding:
+	if _is_ground_pounding or current_state == State.SPIN_ATTACK or _is_wall_running or _is_dashing or _is_wall_sliding or _is_grappling:
 		return
 
 	var can_coyote_jump := _coyote_timer > 0.0
@@ -221,10 +236,13 @@ func _handle_jump() -> void:
 		AudioManager.play_sfx(SoundLibrary.jump)
 		return
 
-	# Double jump
+	# Double jump (or post-grapple first jump)
 	if wants_jump and not is_on_floor() and _has_double_jump and _coyote_timer <= 0.0:
 		_perform_jump(double_jump_force)
-		if not GameManager.get_assist("assist_inf_jumps"):
+		if _post_grapple_jump:
+			# First jump after grapple — acts like a "first jump", keep double jump available
+			_post_grapple_jump = false
+		elif not GameManager.get_assist("assist_inf_jumps"):
 			_has_double_jump = false
 		_jump_buffer_timer = 0.0
 		AudioManager.play_sfx(SoundLibrary.double_jump)
@@ -232,6 +250,7 @@ func _handle_jump() -> void:
 	# Reset double jump, wall run, and air dash on landing
 	if is_on_floor() and not _was_on_floor:
 		_has_double_jump = true
+		_post_grapple_jump = false
 		_wall_run_used = false
 		_has_air_dash = true
 		Juice.squash(mesh)
@@ -444,7 +463,7 @@ func _end_dash() -> void:
 
 
 func _handle_ground_pound() -> void:
-	if _is_dashing:
+	if _is_dashing or _is_grappling:
 		return
 
 	# Start ground pound: press attack while in air and not already pounding
@@ -480,7 +499,7 @@ func _end_ground_pound() -> void:
 
 
 func _handle_spin_attack(delta: float) -> void:
-	if _is_dashing:
+	if _is_dashing or _is_grappling:
 		return
 
 	if _spin_attack_timer > 0.0:
@@ -598,8 +617,8 @@ func _end_ground_slide() -> void:
 
 
 func _apply_movement(delta: float) -> void:
-	if _is_ground_pounding or _is_wall_running or _is_dashing or _is_sliding:
-		return  # No horizontal input during ground pound, wall run, dash, or slide
+	if _is_ground_pounding or _is_wall_running or _is_dashing or _is_sliding or _is_grappling:
+		return  # No horizontal input during ground pound, wall run, dash, slide, or grapple
 
 	var target_velocity := Vector3.ZERO
 
@@ -621,6 +640,9 @@ func _update_state() -> void:
 		return  # Don't interrupt spin attack
 	if _is_wall_running:
 		current_state = State.WALL_RUNNING
+		return
+	if _is_grappling:
+		current_state = State.GRAPPLING
 		return
 	if _is_dashing:
 		current_state = State.DASHING
@@ -667,6 +689,8 @@ func take_damage(damage_position: Vector3) -> void:
 		_end_dash()
 	if _is_sliding:
 		_end_ground_slide()
+	if _is_grappling:
+		_end_grapple("damage")
 	spin_attack_area.monitoring = false
 	spin_attack_area.collision_layer = 0
 	ground_pound_area.monitoring = false
@@ -676,6 +700,257 @@ func take_damage(damage_position: Vector3) -> void:
 	ScreenShake.shake_light()
 	Juice.flash(mesh)
 	AudioManager.play_sfx(SoundLibrary.hurt)
+
+
+func _handle_grapple(delta: float) -> void:
+	if not GameManager.is_ability_unlocked("grapple"):
+		return
+
+	# During grapple
+	if _is_grappling:
+		if not is_instance_valid(_grapple_target):
+			_end_grapple("damage")
+			return
+
+		var target_pos := _grapple_target.global_position
+		var direction := (target_pos - global_position).normalized()
+		var distance := global_position.distance_to(target_pos)
+
+		# Release via jump
+		if Input.is_action_just_pressed("jump"):
+			_has_double_jump = true
+			_has_air_dash = true
+			_post_grapple_jump = true
+			# Clear jump buffer so it doesn't immediately consume the double jump
+			_jump_buffer_timer = 0.0
+			_coyote_timer = 0.0
+			_end_grapple("jump_release")
+			return
+
+		# Arrival
+		if distance < grapple_arrive_distance:
+			velocity = Vector3.UP * grapple_release_boost
+			_has_double_jump = true
+			_has_air_dash = true
+			_post_grapple_jump = true
+			# Clear coyote timer so next jump is treated as double jump, not coyote
+			_coyote_timer = 0.0
+			_jump_buffer_timer = 0.0
+			_end_grapple("arrival")
+			return
+
+		# Pull toward target
+		velocity = direction * grapple_pull_speed
+
+		# Update rope visual
+		_update_grapple_rope()
+
+		# Trail particles
+		if Engine.get_physics_frames() % 3 == 0:
+			Particles.spawn_grapple_trail(global_position, direction)
+		return
+
+	# Targeting: find nearest anchor
+	var prev_anchor := _nearest_anchor
+	_nearest_anchor = _find_nearest_anchor()
+
+	# Update anchor visual states
+	if prev_anchor != _nearest_anchor:
+		if is_instance_valid(prev_anchor) and prev_anchor.has_method("set_anchor_state"):
+			prev_anchor.set_anchor_state(0)  # IDLE
+		if is_instance_valid(_nearest_anchor) and _nearest_anchor.has_method("set_anchor_state"):
+			_nearest_anchor.set_anchor_state(1)  # TARGETED
+			if Engine.get_physics_frames() % 8 == 0:
+				Particles.spawn_anchor_targeted(_nearest_anchor.global_position)
+
+	# Entry: press grapple when target exists
+	if not Input.is_action_just_pressed("grapple"):
+		return
+	if _nearest_anchor == null:
+		return
+	if _is_ground_pounding or _is_wall_running or _is_dashing or _is_wall_sliding or _is_sliding:
+		return
+	if current_state == State.SPIN_ATTACK:
+		return
+
+	_start_grapple()
+
+
+func _start_grapple() -> void:
+	_grapple_target = _nearest_anchor
+	_is_grappling = true
+
+	# Cancel conflicting states
+	if _is_ground_pounding:
+		_is_ground_pounding = false
+		ground_pound_area.monitoring = false
+		ground_pound_area.collision_layer = 0
+	if _is_wall_running:
+		_end_wall_run()
+	if _is_wall_sliding:
+		_end_wall_slide()
+	if _is_dashing:
+		_end_dash()
+	if _is_sliding:
+		_end_ground_slide()
+	if _spin_attack_timer > 0.0:
+		_end_spin_attack()
+
+	# Set anchor to active state
+	if _grapple_target.has_method("set_anchor_state"):
+		_grapple_target.set_anchor_state(2)  # ACTIVE
+
+	# Create rope visual
+	_create_grapple_rope()
+
+	# VFX and SFX
+	var direction := (_grapple_target.global_position - global_position).normalized()
+	Particles.spawn_grapple_launch(global_position, direction)
+	AudioManager.play_sfx(SoundLibrary.grapple_fire)
+	Juice.stretch(mesh, 0.3)
+
+
+func _end_grapple(release_type: String) -> void:
+	_is_grappling = false
+
+	# Reset anchor state
+	if is_instance_valid(_grapple_target) and _grapple_target.has_method("set_anchor_state"):
+		_grapple_target.set_anchor_state(0)  # IDLE
+	_grapple_target = null
+
+	# Destroy rope
+	_destroy_grapple_rope()
+
+	# VFX and SFX based on release type
+	match release_type:
+		"jump_release":
+			Particles.spawn_grapple_release(global_position)
+			AudioManager.play_sfx(SoundLibrary.grapple_release)
+		"arrival":
+			Particles.spawn_grapple_arrive(global_position)
+			AudioManager.play_sfx(SoundLibrary.grapple_arrive)
+			Juice.squash(mesh)
+		"damage":
+			pass  # Damage already has its own VFX
+
+
+func _find_nearest_anchor() -> Node3D:
+	var anchors := get_tree().get_nodes_in_group("grapple_anchor")
+	var best_anchor: Node3D = null
+	var best_score := -1.0
+
+	# Get camera forward direction for facing bias
+	var camera := get_viewport().get_camera_3d()
+	var cam_forward := -camera.global_basis.z if camera else -global_basis.z
+	cam_forward.y = 0.0
+	cam_forward = cam_forward.normalized()
+
+	for anchor in anchors:
+		if not is_instance_valid(anchor):
+			continue
+		var dist := global_position.distance_to(anchor.global_position)
+		if dist > grapple_range:
+			continue
+
+		# Line-of-sight check
+		var space_state := get_world_3d().direct_space_state
+		var query := PhysicsRayQueryParameters3D.create(
+			global_position + Vector3(0, 0.5, 0),
+			anchor.global_position,
+			2  # Environment layer only
+		)
+		query.exclude = [get_rid()]
+		var result := space_state.intersect_ray(query)
+		if not result.is_empty():
+			continue
+
+		# Score: combine distance and facing direction
+		# Normalize distance: closer = higher score (0 to 1)
+		var dist_score := 1.0 - (dist / grapple_range)
+
+		# Facing score: dot product with camera forward (-1 to 1), remap to 0-1
+		var to_anchor: Vector3 = (anchor.global_position - global_position).normalized()
+		var to_anchor_flat := Vector3(to_anchor.x, 0.0, to_anchor.z).normalized()
+		var facing_dot := cam_forward.dot(to_anchor_flat)
+		var facing_score := (facing_dot + 1.0) * 0.5  # Remap -1..1 to 0..1
+
+		# Weight facing more heavily than distance so forward anchors are preferred
+		var score := dist_score * 0.3 + facing_score * 0.7
+
+		if score > best_score:
+			best_score = score
+			best_anchor = anchor
+
+	return best_anchor
+
+
+func _create_grapple_rope() -> void:
+	_grapple_rope_mesh = MeshInstance3D.new()
+	_grapple_rope_mesh.mesh = ImmediateMesh.new()
+
+	_grapple_rope_material = StandardMaterial3D.new()
+	_grapple_rope_material.albedo_color = Color(0.1, 0.15, 0.2, 1.0)
+	_grapple_rope_material.emission_enabled = true
+	_grapple_rope_material.emission = Color(0.15, 0.4, 0.5)
+	_grapple_rope_material.emission_energy_multiplier = 1.0
+	_grapple_rope_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_grapple_rope_material.cull_mode = BaseMaterial3D.CULL_DISABLED
+
+	get_tree().current_scene.add_child(_grapple_rope_mesh)
+
+
+func _update_grapple_rope() -> void:
+	if not _grapple_rope_mesh or not is_instance_valid(_grapple_target):
+		return
+
+	var im: ImmediateMesh = _grapple_rope_mesh.mesh
+	im.clear_surfaces()
+
+	var start_pos := _robot_arm_r.global_position if _robot_arm_r else global_position + Vector3(0.35, 0.55, 0)
+	var end_pos := _grapple_target.global_position
+
+	# Slight sag via bezier midpoint
+	var mid := (start_pos + end_pos) * 0.5
+	mid.y -= 0.4
+
+	# Build a tube mesh (triangle strip) for visible thickness
+	var camera := get_viewport().get_camera_3d()
+	var rope_radius := 0.06
+	var segments := 10
+
+	# Compute bezier points
+	var points: Array[Vector3] = []
+	for i in range(segments + 1):
+		var t := float(i) / segments
+		var point := (1.0 - t) * (1.0 - t) * start_pos + 2.0 * (1.0 - t) * t * mid + t * t * end_pos
+		points.append(point)
+
+	im.surface_begin(Mesh.PRIMITIVE_TRIANGLE_STRIP, _grapple_rope_material)
+	for i in range(points.size()):
+		# Get tangent direction along the rope
+		var tangent: Vector3
+		if i < points.size() - 1:
+			tangent = (points[i + 1] - points[i]).normalized()
+		else:
+			tangent = (points[i] - points[i - 1]).normalized()
+
+		# Get camera-facing perpendicular to create billboard tube
+		var cam_dir := Vector3.UP
+		if camera:
+			cam_dir = (camera.global_position - points[i]).normalized()
+		var side := tangent.cross(cam_dir).normalized() * rope_radius
+
+		# Two vertices per segment forming a ribbon
+		im.surface_add_vertex(points[i] + side)
+		im.surface_add_vertex(points[i] - side)
+	im.surface_end()
+
+
+func _destroy_grapple_rope() -> void:
+	if _grapple_rope_mesh and is_instance_valid(_grapple_rope_mesh):
+		_grapple_rope_mesh.queue_free()
+	_grapple_rope_mesh = null
+	_grapple_rope_material = null
 
 
 func _build_robot_mesh() -> void:
@@ -877,6 +1152,17 @@ func _animate_robot(delta: float) -> void:
 			_robot_arm_r.rotation.x = 0.8
 			_robot_leg_l.rotation.x = -0.5
 			_robot_leg_r.rotation.x = -0.5
+
+		State.GRAPPLING:
+			# Right arm extended forward, left arm back, legs tucked
+			_robot_arm_r.rotation.x = -1.2
+			_robot_arm_r.rotation.z = 0.0
+			_robot_arm_l.rotation.x = 0.6
+			_robot_arm_l.rotation.z = 0.0
+			_robot_leg_l.rotation.x = 0.4
+			_robot_leg_r.rotation.x = 0.4
+			# Slight body lean forward
+			_robot_body.position.y = 0.55
 
 		State.SPIN_ATTACK:
 			# Handled by existing mesh rotation tween

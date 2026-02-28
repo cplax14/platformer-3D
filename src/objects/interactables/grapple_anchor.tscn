@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://grapple_anchor_scene"]
+
+[ext_resource type="Script" path="res://src/objects/interactables/grapple_anchor.gd" id="1_script"]
+
+[node name="GrappleAnchor" type="Area3D"]
+script = ExtResource("1_script")

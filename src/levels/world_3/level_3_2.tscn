@@ -1,0 +1,403 @@
+[gd_scene load_steps=16 format=3 uid="uid://level_3_2_scene"]
+
+[ext_resource type="PackedScene" uid="uid://player_scene" path="res://src/characters/player/player.tscn" id="1_player"]
+[ext_resource type="PackedScene" uid="uid://follow_camera_scene" path="res://src/systems/camera/follow_camera.tscn" id="2_camera"]
+[ext_resource type="PackedScene" uid="uid://hud_scene" path="res://src/ui/hud.tscn" id="3_hud"]
+[ext_resource type="PackedScene" uid="uid://pause_menu_scene" path="res://src/ui/pause_menu.tscn" id="4_pause"]
+[ext_resource type="PackedScene" uid="uid://coin_scene" path="res://src/objects/collectibles/coin.tscn" id="5_coin"]
+[ext_resource type="PackedScene" uid="uid://star_scene" path="res://src/objects/collectibles/star.tscn" id="7_star"]
+[ext_resource type="PackedScene" uid="uid://checkpoint_scene" path="res://src/objects/hazards/checkpoint.tscn" id="11_checkpoint"]
+[ext_resource type="PackedScene" uid="uid://grapple_anchor_scene" path="res://src/objects/interactables/grapple_anchor.tscn" id="12_anchor"]
+[ext_resource type="PackedScene" uid="uid://level_end_scene" path="res://src/objects/collectibles/level_end.tscn" id="14_end"]
+[ext_resource type="Script" path="res://src/levels/level_base.gd" id="15_base"]
+[ext_resource type="PackedScene" path="res://src/characters/enemies/slime/slime.tscn" id="16_slime"]
+[ext_resource type="PackedScene" path="res://src/objects/hazards/breakable_crate.tscn" id="17_crate"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_1"]
+sky_top_color = Color(0.25, 0.45, 0.95, 1.0)
+sky_horizon_color = Color(0.55, 0.7, 1.0, 1.0)
+ground_bottom_color = Color(0.75, 0.8, 1.0, 1.0)
+ground_horizon_color = Color(0.65, 0.75, 1.0, 1.0)
+
+[sub_resource type="Sky" id="Sky_1"]
+sky_material = SubResource("ProceduralSkyMaterial_1")
+
+[sub_resource type="Environment" id="Environment_1"]
+background_mode = 2
+sky = SubResource("Sky_1")
+ambient_light_source = 2
+ambient_light_color = Color(0.65, 0.7, 1.0, 1.0)
+ambient_light_energy = 0.5
+tonemap_mode = 2
+
+[node name="Level_3_2" type="Node3D"]
+script = ExtResource("15_base")
+world_id = 3
+level_id = 2
+fall_depth = -20.0
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_1")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.7071, 0.7071, 0, -0.7071, 0.7071, 0, 30, 0)
+shadow_enabled = true
+light_color = Color(1.0, 0.95, 0.9, 1.0)
+light_energy = 0.8
+
+[node name="Player" parent="." instance=ExtResource("1_player")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+
+[node name="CameraRig" parent="." instance=ExtResource("2_camera")]
+target_path = NodePath("../Player")
+
+[node name="HUD" parent="." instance=ExtResource("3_hud")]
+[node name="PauseMenu" parent="." instance=ExtResource("4_pause")]
+
+; ============================================
+; === SECTION 1: Grapple + Dash Warmup ===
+; Grapple to anchor, land, then dash across a gap
+; ============================================
+
+; Wide starting area
+[node name="S1_StartGround" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
+use_collision = true
+collision_layer = 2
+collision_mask = 0
+size = Vector3(16, 1, 12)
+
+; Coin trail leading to first grapple
+[node name="S1_Coin1" parent="." instance=ExtResource("5_coin")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, -3)
+
+[node name="S1_Coin2" parent="." instance=ExtResource("5_coin")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, -6)
+
+; Grapple anchor — ahead and slightly above
+[node name="S1_Anchor1" parent="." instance=ExtResource("12_anchor")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5, -12)
+
+; Landing platform after grapple
+[node name="S1_GrappleLanding" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3, -20)
+use_collision = true
+collision_layer = 2
+collision_mask = 0
+size = Vector3(12, 1, 10)
+
+[node name="S1_Coin3" parent="." instance=ExtResource("5_coin")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4, -20)
+
+; Dash gap — platform is just out of jump range but dash covers it
+; Gap is about 8 units wide (jump ~6, dash adds ~3-4)
+[node name="S1_DashLanding" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3, -36)
+use_collision = true
+collision_layer = 2
+collision_mask = 0
+size = Vector3(14, 1, 10)
+
+; Coins showing dash path across gap
+[node name="S1_Coin4" parent="." instance=ExtResource("5_coin")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.5, -27)
+
+[node name="S1_Coin5" parent="." instance=ExtResource("5_coin")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.5, -30)
+
+[node name="S1_Slime1" parent="." instance=ExtResource("16_slime")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 3.5, -36)
+
+; ============================================
+; === SECTION 2: Grapple + Wall Run Intro ===
+; Grapple up to a wall, wall run along it to reach next platform
+; ============================================
+
+; Anchor lifts player to wall height
+[node name="S2_Anchor1" parent="." instance=ExtResource("12_anchor")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -48)
+
+; Tall wall to wall-run along (on the right side)
+; Player grapples up, releases near the wall, then wall runs forward
+[node name="S2_WallRunWall" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 6, -56)
+use_collision = true
+collision_layer = 2
+collision_mask = 0
+size = Vector3(1, 8, 14)
+
+; Landing platform at end of wall run
+[node name="S2_WallRunLanding" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5.5, -66)
+use_collision = true
+collision_layer = 2
+collision_mask = 0
+size = Vector3(14, 1, 10)
+
+; Coins along wall run path
+[node name="S2_Coin1" parent="." instance=ExtResource("5_coin")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 8, -52)
+
+[node name="S2_Coin2" parent="." instance=ExtResource("5_coin")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 8, -56)
+
+[node name="S2_Coin3" parent="." instance=ExtResource("5_coin")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 8, -60)
+
+[node name="Checkpoint1" parent="." instance=ExtResource("11_checkpoint")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6, -66)
+
+; ============================================
+; === SECTION 3: Two-Anchor Grapple + Dash Combo ===
+; Grapple to first anchor, land on small platform, grapple to second,
+; then dash across a final gap to reach the next area
+; ============================================
+
+; First anchor — forward and up
+[node name="S3_Anchor1" parent="." instance=ExtResource("12_anchor")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 10, -78)
+
+; Mid platform between anchors
+[node name="S3_MidPlatform" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8.5, -86)
+use_collision = true
+collision_layer = 2
+collision_mask = 0
+size = Vector3(10, 1, 8)
+
+[node name="S3_Coin1" parent="." instance=ExtResource("5_coin")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 10, -86)
+
+[node name="S3_Coin2" parent="." instance=ExtResource("5_coin")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 10, -86)
+
+; Second anchor — continues forward and up
+[node name="S3_Anchor2" parent="." instance=ExtResource("12_anchor")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 14, -96)
+
+; Platform before dash gap
+[node name="S3_DashPlatform" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 12.5, -104)
+use_collision = true
+collision_layer = 2
+collision_mask = 0
+size = Vector3(10, 1, 8)
+
+; Dash gap to next section
+[node name="S3_LandingPlatform" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 12.5, -120)
+use_collision = true
+collision_layer = 2
+collision_mask = 0
+size = Vector3(14, 1, 10)
+
+; Coins showing dash path
+[node name="S3_Coin3" parent="." instance=ExtResource("5_coin")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 14, -110)
+
+[node name="S3_Coin4" parent="." instance=ExtResource("5_coin")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 14, -114)
+
+[node name="S3_Slime1" parent="." instance=ExtResource("16_slime")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 13, -120)
+
+[node name="S3_Crate1" parent="." instance=ExtResource("17_crate")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 13, -118)
+
+; Star 1: Off to the right, reachable by dashing sideways from S3_DashPlatform
+; instead of going straight
+[node name="S3_StarPlatform" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 12.5, -104)
+use_collision = true
+collision_layer = 2
+collision_mask = 0
+size = Vector3(6, 1, 6)
+
+[node name="Star1" parent="." instance=ExtResource("7_star")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 14, -104)
+star_index = 1
+
+; ============================================
+; === SECTION 4: Grapple + Wall Run Gauntlet ===
+; Left wall run -> grapple to anchor -> right wall run -> land
+; Two walls on alternating sides with grapple anchor between
+; ============================================
+
+[node name="Checkpoint2" parent="." instance=ExtResource("11_checkpoint")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 13, -120)
+
+; Left wall for wall run
+[node name="S4_WallL" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7, 14, -132)
+use_collision = true
+collision_layer = 2
+collision_mask = 0
+size = Vector3(1, 8, 14)
+
+; Small stepping platform to get to the wall
+[node name="S4_StepPlatform" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 12.5, -128)
+use_collision = true
+collision_layer = 2
+collision_mask = 0
+size = Vector3(6, 1, 6)
+
+; Coins along left wall run
+[node name="S4_Coin1" parent="." instance=ExtResource("5_coin")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 16, -130)
+
+[node name="S4_Coin2" parent="." instance=ExtResource("5_coin")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 16, -134)
+
+; Grapple anchor after wall run — forward and slightly up
+; Player wall runs along left wall, wall jumps off, catches this anchor
+[node name="S4_Anchor1" parent="." instance=ExtResource("12_anchor")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 18, -142)
+
+; Right wall for second wall run
+[node name="S4_WallR" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 17, -150)
+use_collision = true
+collision_layer = 2
+collision_mask = 0
+size = Vector3(1, 8, 14)
+
+; Mid-platform where player can land after grapple before wall run
+[node name="S4_MidPlatform" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 15.5, -148)
+use_collision = true
+collision_layer = 2
+collision_mask = 0
+size = Vector3(6, 1, 6)
+
+; Coins along right wall run
+[node name="S4_Coin3" parent="." instance=ExtResource("5_coin")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 19, -150)
+
+[node name="S4_Coin4" parent="." instance=ExtResource("5_coin")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 19, -154)
+
+; Landing after right wall run
+[node name="S4_Landing" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 15.5, -162)
+use_collision = true
+collision_layer = 2
+collision_mask = 0
+size = Vector3(14, 1, 10)
+
+[node name="S4_Slime1" parent="." instance=ExtResource("16_slime")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 16, -162)
+
+[node name="S4_Slime2" parent="." instance=ExtResource("16_slime")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 16, -160)
+
+; ============================================
+; === SECTION 5: Grand Combo Finale ===
+; Grapple up (2-anchor), wall run, dash to reach the goal
+; ============================================
+
+[node name="Checkpoint3" parent="." instance=ExtResource("11_checkpoint")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 16, -162)
+
+; First anchor — forward and up
+[node name="S5_Anchor1" parent="." instance=ExtResource("12_anchor")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 20, -174)
+
+; Mid rest platform
+[node name="S5_MidPlatform" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 18.5, -182)
+use_collision = true
+collision_layer = 2
+collision_mask = 0
+size = Vector3(10, 1, 8)
+
+[node name="S5_Coin1" parent="." instance=ExtResource("5_coin")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 20, -182)
+
+[node name="S5_Coin2" parent="." instance=ExtResource("5_coin")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 20, -182)
+
+; Second anchor — continues forward and up
+[node name="S5_Anchor2" parent="." instance=ExtResource("12_anchor")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 24, -192)
+
+; Platform at top of grapple climb, wall ahead
+[node name="S5_TopPlatform" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 22.5, -200)
+use_collision = true
+collision_layer = 2
+collision_mask = 0
+size = Vector3(10, 1, 8)
+
+; Wall run wall — along the left side, leads to higher platform
+[node name="S5_Wall" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 24, -210)
+use_collision = true
+collision_layer = 2
+collision_mask = 0
+size = Vector3(1, 8, 14)
+
+; Coins along wall run
+[node name="S5_Coin3" parent="." instance=ExtResource("5_coin")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 26, -208)
+
+[node name="S5_Coin4" parent="." instance=ExtResource("5_coin")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 26, -212)
+
+; Elevated platform after wall run — needs a dash to reach across gap
+[node name="S5_PreDashPlatform" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 24.5, -220)
+use_collision = true
+collision_layer = 2
+collision_mask = 0
+size = Vector3(8, 1, 6)
+
+[node name="S5_Crate1" parent="." instance=ExtResource("17_crate")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 25, -220)
+
+; Final dash gap to goal platform
+[node name="S5_GoalPlatform" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 24.5, -236)
+use_collision = true
+collision_layer = 2
+collision_mask = 0
+size = Vector3(14, 1, 12)
+
+; Coins on dash path
+[node name="S5_Coin5" parent="." instance=ExtResource("5_coin")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 26, -226)
+
+[node name="S5_Coin6" parent="." instance=ExtResource("5_coin")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 26, -230)
+
+; Combat area on goal platform
+[node name="S5_Slime1" parent="." instance=ExtResource("16_slime")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 25, -236)
+
+[node name="S5_Slime2" parent="." instance=ExtResource("16_slime")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 25, -234)
+
+[node name="S5_Crate2" parent="." instance=ExtResource("17_crate")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 25, -238)
+
+; Level end
+[node name="LevelEnd" parent="." instance=ExtResource("14_end")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 25.5, -240)
+next_world = 3
+next_level = 3
+
+; Star 2: Hidden below the goal platform — grapple to a secret anchor
+; underneath, then double jump back up
+[node name="S5_SecretAnchor" parent="." instance=ExtResource("12_anchor")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 22, -236)
+
+[node name="S5_SecretPlatform" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 20.5, -236)
+use_collision = true
+collision_layer = 2
+collision_mask = 0
+size = Vector3(6, 1, 6)
+
+[node name="Star2" parent="." instance=ExtResource("7_star")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 22, -236)
+star_index = 2

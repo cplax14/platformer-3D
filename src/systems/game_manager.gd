@@ -32,7 +32,7 @@ const INVINCIBILITY_DURATION: float = 2.0
 var _invincibility_timer: float = 0.0
 
 # --- Tier 5: Ability Unlock Progression ---
-var unlocked_abilities: Dictionary = {"wall_run": false, "wall_slide": false, "dash": false}
+var unlocked_abilities: Dictionary = {"wall_run": false, "wall_slide": false, "dash": false, "grapple": false}
 
 # --- Tier 5: Coin Bank & Color Shop ---
 var coin_bank: int = 0
@@ -88,7 +88,7 @@ func reset_game() -> void:
 	coin_bank = 0
 	owned_colors = ["blue"]
 	selected_color = "blue"
-	unlocked_abilities = {"wall_run": false, "wall_slide": false, "dash": false}
+	unlocked_abilities = {"wall_run": false, "wall_slide": false, "dash": false, "grapple": false}
 	assists = {
 		"assist_coyote": false,
 		"assist_slow_fall": false,
@@ -174,14 +174,15 @@ func is_ability_unlocked(ability_name: String) -> bool:
 func refresh_abilities() -> void:
 	var old_abilities := unlocked_abilities.duplicate()
 
-	# Beat World 1 boss (star on "1_4") -> wall_slide + wall_run
+	# Beat World 1 boss (star on "1_4") -> wall_slide + wall_run + dash
 	var w1_boss_beaten := _has_boss_star("1_4")
 	unlocked_abilities["wall_run"] = w1_boss_beaten
 	unlocked_abilities["wall_slide"] = w1_boss_beaten
+	unlocked_abilities["dash"] = w1_boss_beaten
 
-	# Beat World 2 boss (star on "2_4") -> air dash
+	# Beat World 2 boss (star on "2_4") -> grapple
 	var w2_boss_beaten := _has_boss_star("2_4")
-	unlocked_abilities["dash"] = w2_boss_beaten
+	unlocked_abilities["grapple"] = w2_boss_beaten
 
 	# Check for newly unlocked abilities
 	var newly_unlocked: Array = []

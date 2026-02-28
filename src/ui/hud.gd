@@ -28,6 +28,11 @@ var _boss_max_hp: int = 1
 var _timer_label: Label
 var _best_label: Label
 
+# Grapple tutorial hint
+var _grapple_hint_label: Label = null
+var _grapple_hint_shown: bool = false
+var _grapple_hint_visible: bool = false
+
 
 func _ready() -> void:
 	GameManager.health_changed.connect(_on_health_changed)
@@ -51,6 +56,7 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	_update_timer_display()
+	_update_grapple_hint()
 
 
 func _on_health_changed(new_health: int) -> void:
@@ -158,6 +164,77 @@ func _show_new_best() -> void:
 	tween.tween_interval(2.0)
 	tween.tween_property(new_best_label, "modulate:a", 0.0, 0.5)
 	tween.tween_callback(new_best_label.queue_free)
+
+
+# --- Grapple Tutorial Hint ---
+
+func _update_grapple_hint() -> void:
+	if _grapple_hint_shown:
+		return
+	if not GameManager.is_ability_unlocked("grapple"):
+		return
+
+	# Check if player has a targeted anchor
+	var players := get_tree().get_nodes_in_group("player")
+	if players.is_empty():
+		return
+	var player: CharacterBody3D = players[0]
+
+	# Dismiss permanently once player grapples
+	if player.get("_is_grappling"):
+		_grapple_hint_shown = true
+		_hide_grapple_hint()
+		return
+
+	var has_target: bool = player.get("_nearest_anchor") != null
+
+	if has_target and not _grapple_hint_visible:
+		_show_grapple_hint()
+	elif not has_target and _grapple_hint_visible:
+		_hide_grapple_hint()
+
+
+func _show_grapple_hint() -> void:
+	_grapple_hint_visible = true
+
+	if not _grapple_hint_label:
+		_grapple_hint_label = Label.new()
+		_grapple_hint_label.add_theme_font_size_override("font_size", 28)
+		_grapple_hint_label.add_theme_color_override("font_color", Color(0.9, 0.95, 1.0, 1.0))
+		_grapple_hint_label.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.8))
+		_grapple_hint_label.add_theme_constant_override("shadow_offset_x", 2)
+		_grapple_hint_label.add_theme_constant_override("shadow_offset_y", 2)
+		_grapple_hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_grapple_hint_label.set_anchors_preset(Control.PRESET_CENTER)
+		_grapple_hint_label.offset_top = 80.0
+		_grapple_hint_label.offset_bottom = 130.0
+		_grapple_hint_label.offset_left = -200.0
+		_grapple_hint_label.offset_right = 200.0
+		add_child(_grapple_hint_label)
+
+	# Determine button text based on input device
+	var button_text := "[F]"
+	if Input.get_connected_joypads().size() > 0:
+		button_text = "[F] / [RB]"
+	_grapple_hint_label.text = "Press " + button_text + " to Grapple!"
+
+	_grapple_hint_label.modulate = Color(1, 1, 1, 0)
+	_grapple_hint_label.visible = true
+	var tween := create_tween()
+	tween.tween_property(_grapple_hint_label, "modulate:a", 1.0, 0.3)
+
+
+func _hide_grapple_hint() -> void:
+	_grapple_hint_visible = false
+	if not _grapple_hint_label:
+		return
+
+	var tween := create_tween()
+	tween.tween_property(_grapple_hint_label, "modulate:a", 0.0, 0.3)
+	tween.tween_callback(func():
+		if _grapple_hint_label:
+			_grapple_hint_label.visible = false
+	)
 
 
 # --- Boss Bar ---

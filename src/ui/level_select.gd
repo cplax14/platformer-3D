@@ -23,9 +23,18 @@ const WORLDS: Array[Dictionary] = [
 			{"path": "res://src/levels/world_2/level_2_boss.tscn", "name": "Boss: Crystal Golem"},
 		],
 	},
+	{
+		"name": "World 3 — Sky Fortress",
+		"levels": [
+			{"path": "res://src/levels/world_3/level_3_1.tscn", "name": "3-1: Grapple Heights"},
+		{"path": "res://src/levels/world_3/level_3_2.tscn", "name": "3-2: Sky Gauntlet"},
+		{"path": "res://src/levels/world_3/level_3_3.tscn", "name": "3-3: Storm Spire"},
+		],
+	},
 ]
 
 const W1_STAR_REQUIREMENT: int = 9  # Stars needed to unlock W2
+const W2_BOSS_LEVEL_ID: String = "2_4"  # Boss star needed to unlock W3
 
 var _current_world_index: int = 0
 
@@ -135,7 +144,12 @@ func _build_level_buttons() -> void:
 	# Show unlock hint for locked worlds
 	if not _is_world_unlocked(_current_world_index):
 		var hint := Label.new()
-		hint.text = "Collect all World 1 stars to unlock!"
+		if _current_world_index == 1:
+			hint.text = "Collect all World 1 stars to unlock!"
+		elif _current_world_index == 2:
+			hint.text = "Defeat the World 2 boss to unlock!"
+		else:
+			hint.text = "Complete previous worlds to unlock!"
 		hint.add_theme_font_size_override("font_size", 18)
 		hint.add_theme_color_override("font_color", Color(0.7, 0.5, 0.2))
 		hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -145,11 +159,16 @@ func _build_level_buttons() -> void:
 func _is_world_unlocked(world_index: int) -> bool:
 	if world_index == 0:
 		return true
-	# World 2 requires 9 stars across all W1 levels (1_1 through 1_4, including boss star)
-	var w1_stars := 0
-	for i in range(1, 5):
-		w1_stars += GameManager.get_star_count("1_%d" % i)
-	return w1_stars >= W1_STAR_REQUIREMENT
+	if world_index == 1:
+		# World 2 requires 9 stars across all W1 levels (1_1 through 1_4, including boss star)
+		var w1_stars := 0
+		for i in range(1, 5):
+			w1_stars += GameManager.get_star_count("1_%d" % i)
+		return w1_stars >= W1_STAR_REQUIREMENT
+	if world_index == 2:
+		# World 3 unlocks when World 2 boss is beaten (has boss star)
+		return GameManager.get_star_count(W2_BOSS_LEVEL_ID) > 0
+	return false
 
 
 func _is_level_unlocked(world: int, level_index: int) -> bool:
