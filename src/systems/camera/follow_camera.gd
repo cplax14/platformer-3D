@@ -47,7 +47,7 @@ func _ready() -> void:
 	# Start camera behind target
 	if _target:
 		global_position = _target.global_position + follow_offset
-		_yaw = _target.rotation.y + PI
+		_yaw = _target.rotation.y
 
 
 func _physics_process(delta: float) -> void:
